@@ -39,76 +39,32 @@
 ;------------------------------------------------------------------------------
 
 Print_dec:
-
     pusha
 
-    push ax
+    mov  cx, 100   ; make it support "000" to "999"
 
-    mov  bx, ax
-
-    mov  al, '0'
-    mov  ah, 0Eh
-
-    cmp  bx, 100
-    jnb  endspace
-
-    int  10h
-
-    cmp  bx, 10
-    jnb  endspace
-
-    int  10h
-
-endspace:
-    pop ax
-
-    cmp  ax,10000
-    jnb  MORETHAN9999
-    cmp  ax,1000
-    jnb  MORETHAN999
-    cmp  ax,100
-    jnb  MORETHAN99
-    cmp  ax,10
-    jnb  MORETHAN9
-    jmp  LESSTHAN10
-
-MORETHAN9999:
+loop_print_dec:
     xor  dx, dx
-    mov  cx, 10000
     div  cx
+
     add  al, '0'
     mov  ah, 0Eh
     int  10h
-    mov  ax, dx
-MORETHAN999:
+
+    mov  ax, dx    ; div remain
+
+    push dx
+    push ax
     xor  dx, dx
-    mov  cx, 1000;
-    div  cx
-    add  al, '0';
-    mov  ah, 0Eh;
-    int  10h
-    mov  ax, dx
-MORETHAN99:
-    mov  cl, 100;
-    div  cl
-    mov  dl, ah;
-    add  al, '0';
-    mov  ah, 0Eh;
-    int 10h
-    mov  al, dl;
-    mov  ah, 0;
-MORETHAN9:
-    mov  cl, 10;
-    div  cl
-    mov  dl, ah;
-    add  al, '0';
-    mov  ah, 0Eh;
-    int  10h
-    mov  al, dl;
-LESSTHAN10:
-    add  al, '0';
-    mov  ah, 0Eh;
-    int 10h
+    mov  ax, cx
+    mov  cx, 10
+    div  cx        ; preparing the next divisor
+    mov  cx, ax
+    pop  ax
+    pop  dx
+
+    cmp  cx, 0
+    jnz  loop_print_dec
 
     popa
 
@@ -669,9 +625,9 @@ Toggle_Mute:
 ;-------------------------------DATA-------------------------------------------
 ;------------------------------------------------------------------------------
 
-BANNER_MSG         db "RadioTrack V0.5 (c) 1998-2020 Jeff / HxC2001",10,13
-                   db "Left/Right:Frequency, Up/Down:Volume, PgDn:AM/FM, End:Mute"
-                   db ", PgUp:mode",10,13,"$"
+BANNER_MSG         db "RadioTrack v0.6 (c) 1998-2020 Jeff / HxC2001",10,13
+                   db "Left/Right:Frequency, Up/Down:Volume, PgDn:AM/FM,"
+                   db " End:Mute, PgUp:mode, Esc:Quit",10,13,"$"
 
 CARD_PORT          dw 30Ch
 
