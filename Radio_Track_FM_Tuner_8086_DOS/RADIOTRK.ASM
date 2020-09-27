@@ -11,22 +11,67 @@
 ;
 ; Main parts :
 ;
-; Sanyo LM7000     : Direct PLL Frequency Synthesizer for Electronic Tuning
-; Philips TEA5712T : AM/FM stereo DTS radio circuit
+; Sanyo LM7000     : Direct PLL Frequency Synthesizer for Electronic Tuning.
+; Philips TEA5712T : AM/FM stereo DTS radio circuit.
+; Sanyo LC7534M    : Electronic Volume control.
 ; Samsung KA2206   : 4.0W Dual Audio Power Amp.
-; GAL16V8B         : Decoder
+; GAL16V8B         : ISA address decoder.
+; 74LS273          : ISA register latch.
 ;
-; ISA Port number  : 30Ch
+; ISA Port number  : 30Ch or 20Ch (jumper JP1 set)
 ;
-; Port Usage       : Bit 0
+; Port Usage       : Bit 0 : LM7000 CE
 ;                  : Bit 1 : Write: LM7000 CL /serial clock line, Read: Tuned
 ;                  : Bit 2 : LM7000 DATA serial line
 ;                  : Bit 3 : Enable / Mute
-;                  : Bit 4
-;                  : Bit 5
-;                  : Bit 6 : /UP volume
+;                  : Bit 4 : LM7000 STRQ
+;                  : Bit 5 : RFU
+;                  : Bit 6 : /Up volume
 ;                  : Bit 7 : /Down volume
 ;
+; ISA Port connections :
+;   - Data : D0 <> D7
+;   - Address : A2 <> A9  (A0 & A1 not connected : The board present the same
+;                          register at 30Ch,30Dh,30Eh and 30Fh...)
+;   - Control : RESET, AEN, I/O Write, I/O Read.
+;   - +5V and +12V (For the power amp)
+;
+; GAL connections:
+; GAL Pin 1  : ISA I/O Read
+; GAL Pin 2  : ISA I/O Write
+; GAL Pin 3  : ISA A2
+; GAL Pin 4  : ISA A3
+; GAL Pin 5  : ISA A4
+; GAL Pin 6  : ISA A5
+; GAL Pin 7  : ISA A6
+; GAL Pin 8  : ISA A7
+; GAL Pin 9  : ISA A8
+; GAL Pin 10 : GND
+; GAL Pin 11 : ISA A9
+; GAL Pin 12 : LS273 Latch CP pin
+; GAL Pin 13 : LM7000 /STOUT (Auto search stop/ "Tuned" status)
+; GAL Pin 14 : ISA AEN
+; GAL Pin 15 : Jumper (Default set to high : 30Ch-30Fh, Low : 20Ch-20Fh )
+; GAL Pin 16 : ISA RESET
+; GAL Pin 17 : TEA5712T IFCNT pin (path not populated !)
+; GAL Pin 18 : LS273 Latch MR pin
+; GAL Pin 19 : ISA D1 -> Used to return the LM7000 "Tuned" status
+; GAL Pin 20 : +5V
+;
+; Latch LS273 output connections :
+; Q7 : LC7534 /Down pin (Pin 17)
+; Q6 : LC7534 /Up pin   (Pin 19)
+; Q5 : NC
+; Q4 : LM7000 STRQ      (Pin 2)
+; Q3 : LC7534 CE pin    (Pin 4)
+; Q2 : LM7000 DATA      (Pin 5)
+; Q1 : LM7000 CLOCK     (Pin 4)
+; Q0 : LM7000 CE        (Pin 3)
+;
+; LM7000:
+; BO1,BO2,BO3 : No connected
+;
+
     org 100h
 
     jmp entry_point
