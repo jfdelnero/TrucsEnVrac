@@ -69,7 +69,7 @@
 ; Q0 : LM7000 CE        (Pin 3)
 ;
 ; LM7000:
-; BO1,BO2,BO3 : No connected
+; BO1,BO2,BO3 : Not connected
 ;
 
     org 100h
@@ -168,7 +168,7 @@ am_mode:
     call Print_dec
 
     mov  dx, KHZ_MSG
-    mov  ah,9
+    mov  ah, 9
     int  21h
 
     mov  dx, NOT_MUTED_MSG
@@ -177,7 +177,7 @@ am_mode:
     jne  not_muted
     mov  dx, MUTED_MSG
 not_muted:
-    mov  ah,9
+    mov  ah, 9
     int  21h
 
     mov  dx, NOT_MUTED_MSG
