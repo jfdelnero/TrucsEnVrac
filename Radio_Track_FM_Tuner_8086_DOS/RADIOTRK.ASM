@@ -44,17 +44,17 @@ Print_dec:
 
     push ax
 
-    mov  bx,ax
+    mov  bx, ax
 
     mov  al, '0'
     mov  ah, 0Eh
 
-    cmp  bx,100
+    cmp  bx, 100
     jnb  endspace
 
     int  10h
 
-    cmp  bx,10
+    cmp  bx, 10
     jnb  endspace
 
     int  10h
@@ -124,9 +124,9 @@ Display_RadioState:
     pusha
 
     ; Set cursor position : Line 2, colonn 0
-    mov  ah,2
-    mov  bh,0
-    mov  dx,0200h
+    mov  ah, 2
+    mov  bh, 0
+    mov  dx, 0200h
     int  10h
 
     mov  dx, AM_MSG
@@ -135,7 +135,7 @@ Display_RadioState:
     jne  am_mode
     mov  dx, FM_MSG
 am_mode:
-    mov  ah,9
+    mov  ah, 9
     int  21h
 
     mov  ax, [ds:FREQUENCY]
@@ -147,8 +147,8 @@ am_mode:
 
     call Print_dec
 
-    mov  al,'.';
-    mov  ah ,0Eh;
+    mov  al, '.';
+    mov  ah, 0Eh;
     int  10h
 
     pop  ax
@@ -156,11 +156,11 @@ am_mode:
     call Print_dec
 
     mov  dx, MHZ_MSG
-    mov  ah,9
+    mov  ah, 9
     int  21h
 
     mov  dx, REF_MSG
-    mov  ah,9
+    mov  ah, 9
     int  21h
 
     mov  ax, [ds:REFERENCE]
@@ -180,7 +180,7 @@ not_muted:
     int  21h
 
     mov  dx, NOT_MUTED_MSG
-    mov  ah,9
+    mov  ah, 9
     int  21h
 
     popa
@@ -216,16 +216,16 @@ Send_Bit:
 
     mov  dx, [ds:CARD_PORT]
 
-    mov  cl,11001001b
-    and  al,1
-    shl  al,2
-    or   al,cl
-    out  dx,al
-    out  dx,al
+    mov  cl, 11001001b
+    and  al, 1
+    shl  al, 2
+    or   al, cl
+    out  dx, al
+    out  dx, al
 
-    or   al,00000010b
-    out  dx,al
-    out  dx,al
+    or   al, 00000010b
+    out  dx, al
+    out  dx, al
 
     popa
 
@@ -256,10 +256,10 @@ SETZERO:
 
     mov  [ds:si], dl
 
-    mov  cx,ax
-    add  si,1
-    rol  bx,1
-    cmp  bx,0100000000000000B
+    mov  cx, ax
+    add  si, 1
+    rol  bx, 1
+    cmp  bx, 0100000000000000B
     jne  UPDATE_Freq_Loop
 
     popa
@@ -279,19 +279,19 @@ Update_LM7000_Reg:
 
 Loop_Set_Card:
 
-    mov  al,[ds:si]
-    cmp  al,0ffh
+    mov  al, [ds:si]
+    cmp  al, 0ffh
     je   End_Set_Card
 
     call Send_Bit
 
-    add  si,1
+    add  si, 1
     jmp  Loop_Set_Card
 
 End_Set_Card:
 
-    mov  al,11001000b
-    out  dx,al
+    mov  al, 11001000b
+    out  dx, al
 
     popa
     ret
@@ -307,12 +307,12 @@ Flush_keyboard_buffer:
     push es
     push di
 
-    mov  bx,40h
-    mov  es,bx
-    mov  di,1ch
-    mov  bx,[es:di]
-    mov  di,1ah
-    mov  [es:di],bx
+    mov  bx, 40h
+    mov  es, bx
+    mov  di, 1ch
+    mov  bx, [es:di]
+    mov  di, 1ah
+    mov  [es:di], bx
 
     pop  di
     pop  es
@@ -329,48 +329,48 @@ Flush_keyboard_buffer:
 Update_Tune_Status:
     pusha
 
-    mov  ah,2
-    mov  bh,0
-    mov  dx,022Bh
+    mov  ah, 2
+    mov  bh, 0
+    mov  dx, 022Bh
     int  10h
 
-    mov  cl,11010000B
+    mov  cl, 11010000B
     mov  dx, [ds:CARD_PORT]
     mov  bl, [ds:MUTESTATUS]
     dec  bl
     jz   Card_Muted
 
-    mov  cl,11011000B
+    mov  cl, 11011000B
 Card_Muted:
 
-    mov  al,cl
-    out  dx,al
-    xor  ax,ax
-    xor  ax,ax
-    xor  ax,ax
-    in   al,dx
-    in   al,dx
-    and  al,00000010B
+    mov  al, cl
+    out  dx, al
+    xor  ax, ax
+    xor  ax, ax
+    xor  ax, ax
+    in   al, dx
+    in   al, dx
+    and  al, 00000010B
     jz   TUNEOK
 
     ; Not tuned
 
-    xor  al,al
-    mov  [ds:TUNESTATUS],al
+    xor  al, al
+    mov  [ds:TUNESTATUS], al
 
     mov  dx, NOT_TUNED_MSG
-    mov  ah,9
+    mov  ah, 9
     int  21h
     popa
 
     ret
 
 TUNEOK:
-    mov  al,1
-    mov  [ds:TUNESTATUS],al
+    mov  al, 1
+    mov  [ds:TUNESTATUS], al
 
     mov  dx, TUNED_MSG
-    mov  ah,9
+    mov  ah, 9
     int  21h
 
     popa
@@ -394,12 +394,12 @@ entry_point:
     pop  es
 
     ; Clear screen
-    mov  ax,0003h
+    mov  ax, 0003h
     int  10h
 
     ; Initial message
     mov  dx, BANNER_MSG
-    mov  ah,9
+    mov  ah, 9
     int  21h
 
     mov  cx, 0
@@ -412,52 +412,52 @@ MAIN_LOOP:
     hlt
 
     ; Get the State of the keyboard buffer
-    mov  ah,1
+    mov  ah, 1
     int  16h
 
     JZ   MAIN_LOOP  ; Nothing in the buffer -> Main loop
 
     call Flush_keyboard_buffer
 
-    cmp  ax,4800h        ; Up key
+    cmp  ax, 4800h       ; Up key
     jne  cont01
-    mov  al,1
+    mov  al, 1
     call Change_Volume
 cont01:
 
-    cmp  ax,5000h        ; Down key
+    cmp  ax, 5000h       ; Down key
     jne  cont02
-    mov  al,0
+    mov  al, 0
     call Change_Volume
 cont02:
 
-    cmp  ax,4f00h        ; mute
+    cmp  ax, 4f00h       ; mute
     jne  cont03
-    call ToggleMute
+    call Toggle_Mute
 cont03:
 
-    cmp  ax,4D00h        ; Right key
+    cmp  ax, 4D00h       ; Right key
     jne  cont04
     mov  cx, [ds:REFERENCE]
     call Change_Frequency
 cont04:
 
-    cmp  ax,4B00h         ; Left key
+    cmp  ax, 4B00h        ; Left key
     jne  cont05
     mov  cx, [ds:REFERENCE]
     neg  cx
     call Change_Frequency
 cont05:
 
-    cmp  ax,4d36h         ; Shift + Right key
+    cmp  ax, 4d36h        ; Shift + Right key
     jne  cont06
 
-    mov  cx,1000
+    mov  cx, 1000
     call Change_Frequency
 
 cont06:
 
-    cmp  ax,4b34h         ; Shift + Left key
+    cmp  ax, 4b34h        ; Shift + Left key
     jne  cont07
 
     mov  cx, -1000
@@ -475,14 +475,14 @@ cont08:
     call Change_STEP
 cont09:
 
-    cmp  ax,011Bh          ; Escape
+    cmp  ax, 011Bh        ; Escape
     je   Return_to_DOS
 
     jmp  MAIN_LOOP
 
 Return_to_DOS:
 
-    mov  ax,4c00h
+    mov  ax, 4c00h
     int  21h
 
     ret
@@ -496,25 +496,25 @@ Return_to_DOS:
 Change_STEP:
 
     pusha
-    mov  ah,2
-    mov  bh,0
-    mov  dx,0400h
+    mov  ah, 2
+    mov  bh, 0
+    mov  dx, 0400h
     int  10h
     popa
 
     mov  di, [ds:REF_CFG_INDEX]
-    add  di,4
-    mov  bl, [ds:DI]
-    cmp  bl,0ffh
+    add  di, 4
+    mov  bl, [ds:di]
+    cmp  bl, 0ffh
     jne  end_table_not_reached
     mov  di, REF_CFG_ARRAY
 end_table_not_reached:
-    mov  [ds:REF_CFG_INDEX],di
+    mov  [ds:REF_CFG_INDEX], di
 
-    xor  bx,bx
-    mov  bl,[ds:di]
-    mov  [ds:REFERENCE],bx
-    xor  bh,bh
+    xor  bx, bx
+    mov  bl, [ds:di]
+    mov  [ds:REFERENCE], bx
+    xor  bh, bh
 
     call Display_RadioState
 
@@ -522,14 +522,14 @@ end_table_not_reached:
     inc  di
     mov  si, stp1
 loop_update_ref:
-    mov  al,[cs:di]
-    mov  [cs:si],al
+    mov  al, [cs:di]
+    mov  [cs:si], al
     inc  si
     inc  di
     cmp  si, stp1 + 3
     jne  loop_update_ref
 
-    CALL Update_LM7000_Reg
+    call Update_LM7000_Reg
 
     xor  al,al
 
@@ -543,7 +543,7 @@ loop_update_ref:
 
 Toggle_BAND:
 
-    mov  al,[ds:BANDE]
+    mov  al, [ds:BANDE]
     xor  al, 1
     and  al, 1
     mov  [ds:BANDE],al
@@ -552,7 +552,7 @@ Toggle_BAND:
 
     call Display_RadioState
 
-    xor  al,al
+    xor  al, al
 
     ret
 
@@ -564,17 +564,17 @@ Toggle_BAND:
 ; ax -> low
 ; bx
 AddFreq:
-    cmp  cx,0
+    cmp  cx, 0
     jnl  notneg
     neg  cx
-    sub  ax,cx
+    sub  ax, cx
     jnc  end_incn
     dec  dx
 end_incn:
     ret
 
 notneg:
-    add  ax,cx
+    add  ax, cx
     jnc  end_inc
     inc  dx
 end_inc:
@@ -592,8 +592,8 @@ Change_Frequency:
     mov  dx, [ds:FREQUENCY+2]
     mov  ax, [ds:FREQUENCY]
     call AddFreq               ; Frequency = Frequency +/- Offset
-    mov  [ds:FREQUENCY+2],dx
-    mov  [ds:FREQUENCY],ax
+    mov  [ds:FREQUENCY+2], dx
+    mov  [ds:FREQUENCY], ax
     call Display_RadioState
 
     mov  cx, [ds:IF_FREQ]
@@ -606,7 +606,7 @@ Change_Frequency:
     call Update_LM7000_FREQ_ARRAY
     call Update_LM7000_Reg
 
-    xor  al,al
+    xor  al, al
 
     ret
 
@@ -646,7 +646,7 @@ dec_vol:
 ;
 ;------------------------------------------------------------------------------
 
-ToggleMute:
+Toggle_Mute:
 
     mov  bl, [ds:MUTESTATUS]
     xor  bl, 1
@@ -697,6 +697,7 @@ BANDE              db 1                                     ;am/fm
                    db 0FFh
 ;------------------------------------------------------------------------------
 
+;Default station: 91MHz (Radio Flotteurs/Flotteurs FM at Clamecy / France ;) )
 FREQUENCY          dd 91000                                 ;KHz
 REFERENCE          dw    25                                 ;KHz
 IF_FREQ            dw 10700                                 ;KHz / (10.7 MHz)
@@ -715,4 +716,3 @@ REF_CFG_ARRAY      db 100,0,0,0,
 
 REF_CFG_INDEX      dw REF_CFG_ARRAY
 ;------------------------------------------------------------------------------
-
