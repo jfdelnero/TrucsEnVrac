@@ -358,9 +358,13 @@ pfunc_loc_2A7:
 pfunc_loc_2B3:
     cmp cl, 0Ch
     jnb short loc_305
-    cmp bl, 2
-    jb  short loc_305
-    jnz short loc_2C4
+
+    cmp bl, 2            ; shift + ctrl ?
+    jb  short loc_305    ; no (shift or nothing)
+
+    jnz short loc_2C4    ; shift + ctrl + alt
+
+    ; shift + ctrl
     mov ax, 94F0h
     jmp short Push_scancode
 ; -----------------------------------------------------------------------------
@@ -473,19 +477,22 @@ loc_353:
     xor bx, bx
     int 5       ;  - PRINT-SCREEN KEY
                 ; automatically called by keyboard scanner when print-screen
-				; key is pressed
+                ; key is pressed
     jmp clear_e0e1_leave_kb_isr
 
 ; -----------------------------------------------------------------------------
 
 pfunc_reboot:
-    cmp bl, 2
-    jz  short loc_305
-    jb  short loc_2FD
-    test    dl, 4
+    cmp bl, 2            ; shift + ctrl ?
     jz  short loc_305
 
-    mov word [BIOS_RESET_STATE_FLAG], 1234h
+    jb  short loc_2FD    ; shift or nothing
+
+    ; shift + ctrl + alt
+    test    dl, 4
+    jz  short loc_305    ; CTRL pressed ?
+
+    mov word [BIOS_RESET_STATE_FLAG], 1234h ; (skip memory test)
     call    enable_keyboard
     jmp 0F000h:0E05Bh
 ; -----------------------------------------------------------------------------
@@ -771,6 +778,8 @@ data_array_542:
 pfunc_loc_54E:
     cmp bl, 3
     jnz short loc_560
+    ; shift + ctrl + alt pressed
+
     mov di, data_array_542
     mov cx, 6
     call    scan_buffer
