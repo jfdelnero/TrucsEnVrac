@@ -19,6 +19,7 @@
 
 #include <p18f46k22.h>
 #include "init_io.h"
+#include "hardware.h"
 
 void init_io(void){
 
@@ -29,16 +30,16 @@ void init_io(void){
 	ANSELD = 0x00;
 	ANSELE = 0x00;
 
-	PORTCbits.RC0 = 1;
+	CHIP_SELECTn = 1;
 	TRISCbits.RC0 = OUTPUT;
 
 	TRISD = 0xFF;
 	PORTD = 0x00;
 
-	TRISA = 0xC0; 
+	TRISA = 0xC0;
 	PORTA = 0x00;
 
-	TRISE = 0xF0; 
+	TRISE = 0xF0;
 	PORTE = 0x00;
 
 	// disable pull up on port B
@@ -51,14 +52,15 @@ void init_io(void){
 	PORTCbits.RC7 = 0;
 	TRISCbits.RC7 = INPUT;
 
-	PORTCbits.RC1 = 0;
+	LED_OUTPUT = 0;
 	TRISCbits.RC1 = OUTPUT;
 
-	PORTCbits.RC2 = 0;
+	WE_OUTPUTn = 0;
 	TRISCbits.RC2 = OUTPUT;
 
-	PORTCbits.RC5 = 0;
+	ADDRESS_A9 = 0;
 	TRISCbits.RC5 = OUTPUT;
-	
+
+	// Push button
 	TRISBbits.RB5 = INPUT;
 }

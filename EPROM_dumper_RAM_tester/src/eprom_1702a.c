@@ -50,10 +50,10 @@ void eprom_1702a(void)
 
 	while(1)
 	{
-		while(PORTBbits.RB5 == 1);
+		while(PUSH_BUTTONn == 1);
 
-		PORTCbits.RC0 = 1;
-		PORTCbits.RC1 = 1;
+		CHIP_SELECTn = 1;
+		LED_OUTPUT = 1;
 
 		printrom((const far rom char *)"\r\nReading...\r\n");
 
@@ -64,10 +64,10 @@ void eprom_1702a(void)
 			PORTA = (i & 0x3F);
 			PORTE = (i>>6)&0xF;
 
-			PORTCbits.RC0 = 0;
+			CHIP_SELECTn = 0;
 			mswait(3, 1);
 			ram_buffer[i] = PORTD;
-			PORTCbits.RC0 = 1;
+			CHIP_SELECTn = 1;
 			mswait(1, 1);
 		}
 
@@ -103,8 +103,8 @@ void eprom_1702a(void)
 		printhex(CRCLo);
 		printrom((const far rom char *)"\r\n");
 
-		PORTCbits.RC0 = 0;
-		PORTCbits.RC1 = 0;
+		CHIP_SELECTn = 0;
+		LED_OUTPUT = 0;
 	}
 
 	for(;;);

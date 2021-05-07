@@ -23,4 +23,11 @@
 #define DOUT_INPUT   PORTDbits.RD1
 #define WE_OUTPUTn   PORTCbits.RC2
 
-#define RW_OUTPUT PORTCbits.RC2
+#define RW_OUTPUT    PORTCbits.RC2
+
+#define PUSH_BUTTONn PORTBbits.RB5
+
+#define ADDRESS_A9   PORTCbits.RC5
+
+#define SERIAL_TX    PORTCbits.RC6
+#define SERIAL_RX    PORTCbits.RC7

@@ -40,7 +40,7 @@ void ram_4007(void)
 
 	while(1)
 	{
-		while(PORTBbits.RB5 == 1);
+		while(PUSH_BUTTONn == 1);
 
 		TRISDbits.RD0 = OUTPUT;
 
@@ -65,9 +65,9 @@ void ram_4007(void)
 			PORTA = (i & 0x3F);
 			PORTE = (i>>6)&0x7;
 			if(i&0x200)
-				PORTCbits.RC5 = 1;
+				ADDRESS_A9 = 1;
 			else
-				PORTCbits.RC5 = 0;
+				ADDRESS_A9 = 0;
 
 			nop_delay();
 
@@ -106,9 +106,9 @@ void ram_4007(void)
 			PORTA = (i & 0x3F);
 			PORTE = (i>>6)&0x7;
 			if(i&0x200)
-				PORTCbits.RC5 = 1;
+				ADDRESS_A9 = 1;
 			else
-				PORTCbits.RC5 = 0;
+				ADDRESS_A9 = 0;
 
 			nop_delay();
 			nop_delay();
@@ -153,10 +153,8 @@ void ram_4007(void)
 
 		PORTA = 0x00;
 		PORTE = 0x00;
+		ADDRESS_A9 = 0;
 
-		PORTCbits.RC5 = 0;
-		PORTA = 0x00;
-		PORTE = 0x00;
 		DIN_OUTPUT = 0;
 		CHIP_SELECTn = 0;
 		LED_OUTPUT = 0;

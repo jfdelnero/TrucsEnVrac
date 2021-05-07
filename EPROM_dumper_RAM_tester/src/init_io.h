@@ -20,13 +20,4 @@
 #define INPUT  1
 #define OUTPUT 0
 
-#define SPI_SDO_PORT     PORTCbits.RC5
-#define SPI_SDO_TRIS     TRISCbits.RC5
-
-#define SPI_SDI_PORT     PORTCbits.RC4
-#define SPI_SDI_TRIS     TRISCbits.RC4
-
-#define SPI_CLK_PORT     PORTCbits.RC3
-#define SPI_CLK_TRIS     TRISCbits.RC3
-
 void init_io(void);
