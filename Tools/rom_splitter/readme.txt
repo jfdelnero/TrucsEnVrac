@@ -14,7 +14,7 @@ Written by: Jean-François DEL NERO
 
 Syntax :
 
-rom_split ROMTOSPLIT.ROM [-num_of_bytes:x] [-num_of_banks:x] [-bank_word_size:x (in KB)]
+rom_split ROMTOSPLIT.ROM [-num_of_bytes:x] [-num_of_banks:x] [-bank_word_size:x (in KB)] [-mirror:x]
 
 Example : Split a ROM file for a 16 bits system with 2*32KB*3 EPROMs (192KB):
 

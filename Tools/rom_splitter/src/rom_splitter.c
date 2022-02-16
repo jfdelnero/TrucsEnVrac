@@ -4,7 +4,7 @@
 //
 // Written by: Jean-François DEL NERO
 //
-// Syntax : rom_split ROMTOSPLIT.ROM [-num_of_bytes:x] [-num_of_banks:x] [-bank_word_size:x (in KB)]
+// Syntax : rom_split ROMTOSPLIT.ROM [-num_of_bytes:x] [-num_of_banks:x] [-bank_word_size:x (in KB)] [-mirror:x]
 //
 // Example : Split a ROM file for a 16 Bits system with 2*32KB*3 EPROMs (192KB):
 //
@@ -337,8 +337,8 @@ int main(int argc, char* argv[])
 	unsigned short total_checkum_in;
 	char filename[32];
 	char temp[512];
-	int i,j,k,success;
-	int num_of_bytes,num_of_banks,bank_word_size;
+	int i,j,k,m,success;
+	int num_of_copy,num_of_bytes,num_of_banks,bank_word_size;
 	unsigned int total_size;
 
 	printf("rom_splitter V1.5\n(c)Jean-François DEL NERO / HxC2001\n\n");
@@ -348,6 +348,7 @@ int main(int argc, char* argv[])
 		num_of_bytes = 2;
 		num_of_banks = 1;
 		bank_word_size = 128*1024;
+		num_of_copy = 1;
 
 		if(isOption(argc,argv,"num_of_bytes",(char*)&temp)>0)
 		{
@@ -364,7 +365,12 @@ int main(int argc, char* argv[])
 			bank_word_size = atoi(temp)*1024;
 		}
 
-		printf("Configuration :\n- %d byte(s) per word\n- %d bank(s)\n- %d words per bank\n- Total size: %d bytes\n\n",num_of_bytes,num_of_banks,bank_word_size,num_of_bytes*bank_word_size*num_of_banks);
+		if(isOption(argc,argv,"mirror",(char*)&temp)>0)
+		{
+			num_of_copy = atoi(temp);
+		}
+
+		printf("Configuration :\n- %d byte(s) per word\n- %d bank(s)\n- %d words per bank\n- Total size: %d bytes\n- Duplication : %d\n\n",num_of_bytes,num_of_banks,bank_word_size,num_of_bytes*bank_word_size*num_of_banks,num_of_copy);
 
 		printf("Opening %s ...\n",argv[1]);
 
@@ -381,7 +387,7 @@ int main(int argc, char* argv[])
 					for(i=0;i<num_of_bytes;i++)
 					{
 						sprintf(filename,"BY%d_BK%d.ROM",i,j);
-						if( open_file(&out_files[(num_of_bytes*j) + i], filename,bank_word_size,0xFF) != 1 )
+						if( open_file(&out_files[(num_of_bytes*j) + i], filename,bank_word_size*num_of_copy,0xFF) != 1 )
 						{
 							printf("ERROR : Can't create output rom...\n");
 							goto f_error;
@@ -392,18 +398,21 @@ int main(int argc, char* argv[])
 			else
 				goto m_error;
 
-			for(j=0;j<num_of_banks;j++)
+			for(m=0;m<num_of_copy;m++)
 			{
-				for(i=0;i<num_of_bytes;i++)
+				for(j=0;j<num_of_banks;j++)
 				{
-					for(k=0;k<bank_word_size;k++)
+					for(i=0;i<num_of_bytes;i++)
 					{
-					   byte = get_byte(&in_file, (j * bank_word_size * num_of_bytes) + ( (num_of_bytes*k) + i ), &success );
-					   if(success!=1)
-							goto f_error;
+						for(k=0;k<bank_word_size;k++)
+						{
+							byte = get_byte(&in_file, (j * bank_word_size * num_of_bytes) + ( (num_of_bytes*k) + i ), &success );
+							if(success!=1)
+								goto f_error;
 
-					   if(!set_byte(&out_files[(num_of_bytes*j) + i],k, byte))
-						   goto f_error;
+							if(!set_byte(&out_files[(num_of_bytes*j) + i],k + (m * bank_word_size), byte))
+								goto f_error;
+						}
 					}
 				}
 			}
@@ -492,7 +501,7 @@ int main(int argc, char* argv[])
 	}
 	else
 	{
-		printf( "Syntax : rom_split ROMTOSPLIT.ROM [-num_of_bytes:x] [-num_of_banks:x] [-bank_word_size:x (in KB)]\n" );
+		printf( "Syntax : rom_split ROMTOSPLIT.ROM [-num_of_bytes:x] [-num_of_banks:x] [-bank_word_size:x (in KB)] [-mirror:x]\n" );
 		printf( "\nExample : Split a ROM file for a 16 Bits system with 2*32KB*3 EPROMs (192KB):\n          rom_split ROMTOSPLIT.ROM -num_of_bytes:2 -num_of_banks:3 -bank_word_size:32\n" );
 	}
 
