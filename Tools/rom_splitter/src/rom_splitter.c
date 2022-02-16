@@ -1,15 +1,22 @@
 ///////////////////////////////////////////////////////////////////////////////////
 // File : rom_splitter.c
-// Contains: 16 / 32 bits rom file splitter.
+// Contains: 16 / 32 bits ROM file splitter.
 //
 // Written by: Jean-François DEL NERO
+//
+// Syntax : rom_split ROMTOSPLIT.ROM [-num_of_bytes:x] [-num_of_banks:x] [-bank_word_size:x (in KB)]
+//
+// Example : Split a ROM file for a 16 Bits system with 2*32KB*3 EPROMs (192KB):
+//
+// rom_split ROMTOSPLIT.ROM -num_of_bytes:2 -num_of_banks:3 -bank_word_size:32
+//
 ///////////////////////////////////////////////////////////////////////////////////
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
-#define FILE_CACHE_SIZE (2048)
+#define FILE_CACHE_SIZE (4096)
 
 typedef struct file_cache_
 {
@@ -30,9 +37,13 @@ int open_file(file_cache * fc, char* path, int filesize,unsigned char fill)
 		fc->f = fopen(path,"rb");
 		if(fc->f)
 		{
-			fseek(fc->f,0,SEEK_END);
+			if(fseek(fc->f,0,SEEK_END))
+				goto error;
+
 			fc->file_size = ftell(fc->f);
-			fseek(fc->f,fc->current_offset,SEEK_SET);
+
+			if(fseek(fc->f,fc->current_offset,SEEK_SET))
+				goto error;
 
 			if(fc->current_offset + FILE_CACHE_SIZE > fc->file_size)
 				fc->cur_page_size = ( fc->file_size - fc->current_offset);
@@ -47,7 +58,7 @@ int open_file(file_cache * fc, char* path, int filesize,unsigned char fill)
 			if( fread(&fc->cache_buffer,fc->cur_page_size,1,fc->f) != 1 )
 				goto error;
 
-			return 0;
+			return 1;
 		}
 	}
 	else
@@ -76,24 +87,42 @@ int open_file(file_cache * fc, char* path, int filesize,unsigned char fill)
 				}
 			}
 
+			fclose(fc->f);
+
 			fc->current_offset = 0;
 
-			fc->file_size = ftell(fc->f);
-			fseek(fc->f,fc->current_offset,SEEK_SET);
+			fc->f = fopen(path,"r+b");
+			if(fc->f)
+			{
+				if(fseek(fc->f,fc->current_offset,SEEK_END))
+					goto error;
 
-			if(fc->current_offset + FILE_CACHE_SIZE > fc->file_size)
-				fc->cur_page_size = ( fc->file_size - fc->current_offset);
+				fc->file_size = ftell(fc->f);
+
+				if(fseek(fc->f,fc->current_offset,SEEK_SET))
+					goto error;
+
+				if(fc->current_offset + FILE_CACHE_SIZE > fc->file_size)
+					fc->cur_page_size = ( fc->file_size - fc->current_offset);
+				else
+					fc->cur_page_size = FILE_CACHE_SIZE;
+
+				if( fread(&fc->cache_buffer,fc->cur_page_size,1,fc->f) != 1 )
+					goto error;
+
+				if(fseek(fc->f,fc->current_offset,SEEK_SET))
+					goto error;
+			}
 			else
-				fc->cur_page_size = FILE_CACHE_SIZE;
-
-			if( fread(&fc->cache_buffer,fc->cur_page_size,1,fc->f) != 1 )
+			{
 				goto error;
+			}
 
-			return 0;
+			return 1;
 		}
 	}
 
-	return -1;
+	return 0;
 
 error:
 	if(fc->f)
@@ -101,7 +130,7 @@ error:
 
 	fc->f = 0;
 
-	return -1;
+	return 0;
 }
 
 unsigned char get_byte(file_cache * fc,unsigned int offset, int * success)
@@ -124,7 +153,15 @@ unsigned char get_byte(file_cache * fc,unsigned int offset, int * success)
 			else
 			{
 				fc->current_offset = (offset & ~(FILE_CACHE_SIZE-1));
-				fseek(fc->f, fc->current_offset,SEEK_SET);
+				if(fseek(fc->f, fc->current_offset,SEEK_SET))
+				{
+					if(success)
+					{
+						*success = 0;
+					}
+
+					return 0x00;
+				}
 
 				memset(&fc->cache_buffer,0xFF,FILE_CACHE_SIZE);
 
@@ -162,7 +199,8 @@ int set_byte(file_cache * fc,unsigned int offset, unsigned char byte)
 			{
 				if( fc->dirty )
 				{
-					fseek(fc->f, fc->current_offset, SEEK_SET);
+					if(fseek(fc->f, fc->current_offset, SEEK_SET))
+						goto error;
 
 					if( fwrite( &fc->cache_buffer, fc->cur_page_size, 1, fc->f ) != 1 )
 						goto error;
@@ -176,11 +214,12 @@ int set_byte(file_cache * fc,unsigned int offset, unsigned char byte)
 				else
 					fc->cur_page_size = FILE_CACHE_SIZE;
 
-				fseek(fc->f, fc->current_offset,SEEK_SET);
+				if(fseek(fc->f, fc->current_offset,SEEK_SET))
+					goto error;
 
 				memset(&fc->cache_buffer,0xFF,FILE_CACHE_SIZE);
 
-				if( fread(&fc->cache_buffer,fc->cur_page_size,1,fc->f) == 1 )
+				if( fread(&fc->cache_buffer,fc->cur_page_size,1,fc->f) != 1 )
 					goto error;
 
 				fc->cache_buffer[ offset - fc->current_offset ] = byte;
@@ -193,7 +232,6 @@ int set_byte(file_cache * fc,unsigned int offset, unsigned char byte)
 	return 1;
 
 error:
-
 	return 0;
 }
 
@@ -205,7 +243,8 @@ void close_file(file_cache * fc)
 		{
 			if( fc->dirty )
 			{
-				fseek(fc->f, fc->current_offset, SEEK_SET);
+				if(fseek(fc->f, fc->current_offset, SEEK_SET))
+					goto error;
 
 				if( fwrite( &fc->cache_buffer, fc->cur_page_size, 1, fc->f ) != 1 )
 					goto error;
@@ -302,7 +341,7 @@ int main(int argc, char* argv[])
 	int num_of_bytes,num_of_banks,bank_word_size;
 	unsigned int total_size;
 
-	printf("rom_split V1.4\n(c)HxC2001\n\n");
+	printf("rom_splitter V1.5\n(c)Jean-François DEL NERO / HxC2001\n\n");
 
 	if(argc>=2)
 	{
@@ -329,7 +368,7 @@ int main(int argc, char* argv[])
 
 		printf("Opening %s ...\n",argv[1]);
 
-		if( open_file(&in_file, argv[1],-1,0xFF) >= 0 )
+		if( open_file(&in_file, argv[1],-1,0xFF) == 1 )
 		{
 			printf("File size : %d\n",in_file.file_size);
 
@@ -342,8 +381,9 @@ int main(int argc, char* argv[])
 					for(i=0;i<num_of_bytes;i++)
 					{
 						sprintf(filename,"BY%d_BK%d.ROM",i,j);
-						if( open_file(&out_files[(num_of_bytes*j) + i], filename,bank_word_size,0xFF) < 0 )
+						if( open_file(&out_files[(num_of_bytes*j) + i], filename,bank_word_size,0xFF) != 1 )
 						{
+							printf("ERROR : Can't create output rom...\n");
 							goto f_error;
 						}
 					}
@@ -385,7 +425,7 @@ int main(int argc, char* argv[])
 				for(i=0;i<num_of_bytes;i++)
 				{
 					sprintf(filename,"BY%d_BK%d.ROM",i,j);
-					if( open_file(&out_files[0], filename,-1,0xFF) >= 0 )
+					if( open_file(&out_files[0], filename,-1,0xFF) == 1 )
 					{
 						total_size += out_files[0].file_size;
 
@@ -407,6 +447,7 @@ int main(int argc, char* argv[])
 					}
 					else
 					{
+						printf("ERROR : Can't check output rom...\n");
 						goto f_error;
 					}
 				}
@@ -418,7 +459,7 @@ int main(int argc, char* argv[])
 			for(k=0;k<in_file.file_size;k++)
 			{
 				total_checkum_in += get_byte(&in_file, k, &success );
-			   if(success!=1)
+				if(success!=1)
 					goto f_error;
 
 			}
@@ -434,9 +475,10 @@ int main(int argc, char* argv[])
 			for(k=0;k<total_size;k++)
 			{
 				total_checkum_in += get_byte(&in_file, k, &success );
-			   if(success!=1)
+				if(success!=1)
 					goto f_error;
 			}
+
 			printf("Padded Input file Checksum : 0x%.4X, Size : %d\n",total_checkum_in,total_size);
 
 			close_file(&in_file);
@@ -450,7 +492,8 @@ int main(int argc, char* argv[])
 	}
 	else
 	{
-		printf( "Syntax : rom_split ROMTOSPLIT.ROM [-num_of_bytes:x] [-num_of_banks:x] [-bank_word_size:x]\n" );
+		printf( "Syntax : rom_split ROMTOSPLIT.ROM [-num_of_bytes:x] [-num_of_banks:x] [-bank_word_size:x (in KB)]\n" );
+		printf( "\nExample : Split a ROM file for a 16 Bits system with 2*32KB*3 EPROMs (192KB):\n          rom_split ROMTOSPLIT.ROM -num_of_bytes:2 -num_of_banks:3 -bank_word_size:32\n" );
 	}
 
 	return 0;
