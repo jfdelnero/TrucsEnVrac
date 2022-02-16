@@ -475,7 +475,7 @@ int main(int argc, char* argv[])
 
 			printf("Input file Checksum : 0x%.4X, Size : %d\n",total_checkum_in,in_file.file_size);
 
-			if(in_file.file_size >= total_size)
+			if(in_file.file_size > total_size)
 			{
 				printf("Warning : %d byte(s) ignored !\n",in_file.file_size - total_size);
 			}
