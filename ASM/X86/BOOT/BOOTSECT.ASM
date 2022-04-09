@@ -1,13 +1,13 @@
 ; -----------------------------------------------------------------------------
 ; -----------------------------------------------------------------------------
-; Minimal bootable PC disk image
+; 8086 PC Boot sector.
 ; (Use nasm to assemble it)
 ; Jan-2022 Jean-François DEL NERO / HxC2001
 ; -----------------------------------------------------------------------------
 ; nasm bootsect.asm -o bootsect.img
 ; -----------------------------------------------------------------------------
 
-	%define SECTOR_SIZE      0x200         ; 0x400 on PC98, 0x200 on standard PC
+	%define SECTOR_SIZE      0x200         ; 0x400 on NEC PC98, 0x200 on standard PC
 
 	%define NUMBER_OF_TRACKS 80
 	%define SECTOR_PER_TRACK 9
