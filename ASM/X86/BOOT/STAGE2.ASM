@@ -24,6 +24,8 @@ second_loader:
 	mov     si, msg_second_stage_hello
 	call    print_string_func
 
+	call detect_cpu
+
 	; Switch to a Flat / protected mode
 	jmp switch_to_linear_mode
 
@@ -62,6 +64,71 @@ end_print_string_func:
 
 	ret
 
+detect_cpu:
+
+	pushf                          ; push original FLAGS
+	pop     ax                     ; get original FLAGS
+	mov     cx, ax                 ; save original FLAGS
+	and     ax, 0xfff              ; clear bits 12-15 in FLAGS
+	push    ax                     ; save new FLAGS value on stack
+	popf                           ; replace current FLAGS value
+	pushf                          ; get new FLAGS
+	pop     ax                     ; store new FLAGS in AX
+	and     ax, 0xf000             ; if bits 12-15 are set, then
+	cmp     ax, 0xf000             ;   processor is an 8086/8088
+	mov     byte [cs:cpu_type], 0  ; turn on 8086/8088 flag
+	je      end_cpu_type           ; jump if processor is 8086/8088
+
+	or      cx, 0xf000             ; try to set bits 12-15
+	push    cx                     ; save new FLAGS value on stack
+	popf                           ; replace current FLAGS value
+	pushf                          ; get new FLAGS
+	pop     ax                     ; store new FLAGS in AX
+	and     ax, 0xf000             ; if bits 12-15 are clear
+	mov     byte [cs:cpu_type], 2  ; processor=80286, turn on 80286 flag
+	jz      end_cpu_type           ; if no bits set, processor is 80286
+
+	pushfd                         ; push original EFLAGS
+	pop     eax                    ; get original EFLAGS
+	mov     ecx, eax               ; save original EFLAGS
+	xor     eax, 0x40000           ; flip AC bit in EFLAGS
+	push    eax                    ; save new EFLAGS value on stack
+	popfd                          ; replace current EFLAGS value
+
+	pushfd                         ; get new EFLAGS
+	pop     eax                    ; store new EFLAGS in EAX
+	xor     eax, ecx               ; can't toggle AC bit, processor=80386
+	mov     byte [cs:cpu_type], 3  ; turn on 80386 processor flag
+	jz      end_cpu_type           ; jump if 80386 processor
+	push    ecx
+	popfd                          ; restore AC bit in EFLAGS first
+
+	mov     byte [cs:cpu_type], 4  ; turn on 80486 processor flag
+	mov     eax, ecx               ; get original EFLAGS
+	xor     eax, 200000h           ; flip ID bit in EFLAGS
+	push    eax                    ; save new EFLAGS value on stack
+	popfd                          ; replace current EFLAGS value
+	pushfd                         ; get new EFLAGS
+	pop     eax                    ; store new EFLAGS in EAX
+	xor     eax, ecx               ; can't toggle ID bit,
+	je      end_cpu_type           ; processor=80486
+
+	;Here CPUID is supported !
+	mov     byte [cs:cpu_type], 5  ; Pentium or any other CPUID compatible CPU
+
+	mov     eax,0
+	cpuid
+	mov dword [cs:cpuid_manufacturer], ebx
+	mov dword [cs:cpuid_manufacturer+4], edx
+	mov dword [cs:cpuid_manufacturer+8], ecx
+
+	mov     eax,1
+	cpuid
+	mov dword [cs:cpuid_id], eax
+
+end_cpu_type:
+	ret
+
 align 8
 
 ; -----------------------------------------------------------------------------
@@ -71,7 +138,7 @@ align 8
 ; We define here 2 4GB Code and Data flat segment
 
 gdt_table:
-    ; First descriptor : Should be null/disable
+	; First descriptor : Should be null/disable
 	dw 0x0000		; segment limit (bits 0-15)
 	dw 0			; base (bits 0-15)
 	db 0			; base (bits 16-23)
@@ -81,7 +148,7 @@ gdt_table:
 
 ; ---- offset 0x8 ----
 gdt_code_entry:
-    ; Second descriptor : Code segment descriptor
+	; Second descriptor : Code segment descriptor
 	; cs must point to this descriptor in pm mode
 	dw 0xffff		; segment limit (bits 0-15)
 	dw 0			; base (bits 0-15)
@@ -119,15 +186,15 @@ switch_to_linear_mode:
 
 	; Disable all interruptions
 	; (Once switched to PM mode real mode interruptions can't be used anymore !)
-    cli
+	cli
 
 	; Load the Global Descriptor Table !
 	o32 lgdt [cs:gdt_descriptor]
 
 	; And switch to protected mode !
-    mov eax , cr0
-    or  eax , 0x1           ; Protected mode flag
-    mov cr0 , eax
+	mov eax , cr0
+	or  eax , 0x1           ; Protected mode flag
+	mov cr0 , eax
 
 	; And finaly jump to the new code segment !
 	; (This operation should also flush the instructions prefetch & cache)
@@ -137,7 +204,7 @@ align 8
 
 code_32bit_mode:
 [bits  32]
-    ; Welcome to the Protected Mode ! :)
+	; Welcome to the Protected Mode ! :)
 
 	; All data related segment should now point to the new
 	; data segment defined in the Global Descriptor Table
@@ -156,15 +223,47 @@ code_32bit_mode:
 	; The address line n°20 is disconnected by default
 	; to emulate the pre-386 memory mirror behavior.
 	; This is of course not desired here and we need enable it.
-    in  al, 0x92      ; Fast Gate A20 (Note : older alternate method :through the keyboard controller)
-    or  al, 0x02
-    out 0x92, al
+	in  al, 0x92      ; Fast Gate A20 (Note : older alternate method :through the keyboard controller)
+	or  al, 0x02
+	out 0x92, al
 
 	; At this point the memory
 
 	call clear_screen
 
 	mov esi, msg_second_stage_flat
+	call write_string
+
+	mov esi, msg_cpuvendor
+	call write_string
+
+	mov esi,msg_cpu8086
+	mov al,[cs:cpu_type]
+	cmp al,0
+	je  print_cputype
+
+	mov esi,msg_cpu80286
+	mov al,[cs:cpu_type]
+	cmp al,2
+	je  print_cputype
+
+	mov esi,msg_cpu80386
+	mov al,[cs:cpu_type]
+	cmp al,3
+	je  print_cputype
+
+	mov esi,msg_cpu80486
+	mov al,[cs:cpu_type]
+	cmp al,4
+	je  print_cputype
+
+	mov esi,msg_cpuid
+	call write_string
+	mov eax, [cs:cpuid_id]
+	call print_hex_long
+	mov esi,msg_return
+
+print_cputype:
 	call write_string
 
 	mov edi,START_MEMORY_TEST
@@ -237,16 +336,16 @@ mainloopscreen:
 
 loopscreen:
 
-    mov ebx,ecx
-    shl eax,13
+	mov ebx,ecx
+	shl eax,13
 	xor eax,ebx
 
-    mov ebx,eax
-    shr eax,17
+	mov ebx,eax
+	shr eax,17
 	xor eax,ebx
 
-    mov ebx,eax
-    shl eax,5
+	mov ebx,eax
+	shl eax,5
 	xor eax,ebx
 
 	inc ecx
@@ -262,7 +361,7 @@ jmp mainloopscreen
 	;hlt
 	jmp $
 
-    ret
+	ret
 
 char_x_pos dd 0
 char_y_pos dd 0
@@ -312,7 +411,7 @@ write_char:
 	pop edx
 	pop edi
 
-    ret
+	ret
 
 write_string:
 	push esi
@@ -498,7 +597,7 @@ copy_video_memory: ; esi : src
 	mov edi,0xA0000
 
 loop_copy_video_memory:
-    mov ebx,[es:esi]
+	mov ebx,[es:esi]
 	mov [es:edi],ebx
 	add esi,4
 	add edi,4
@@ -516,20 +615,20 @@ random_mem:
 	push edi
 	push ebx
 
-    mov edi,START_MEMORY_TEST
+	mov edi,START_MEMORY_TEST
 
 main_loop_random_mem:
 
-    mov ebx,eax
-    shl eax,13
+	mov ebx,eax
+	shl eax,13
 	xor eax,ebx
 
-    mov ebx,eax
-    shr eax,17
+	mov ebx,eax
+	shr eax,17
 	xor eax,ebx
 
-    mov ebx,eax
-    shl eax,5
+	mov ebx,eax
+	shl eax,5
 	xor eax,ebx
 
 	and eax,0x0000FFFF
@@ -541,7 +640,17 @@ main_loop_random_mem:
 
 	pop ebx
 	pop edi
-    ret
+	ret
 
 msg_second_stage_hello      db "I am the second stage ! :)",13,10,0
 msg_second_stage_flat       db "Protected mode enabled !",13,10,0
+cpu_type                    db 0
+msg_return                  db 13,10,0
+msg_cpuid                   db "CPU ID: 0x",0
+msg_cpu8086                 db "8086 CPU",13,10,0
+msg_cpu80286                db "286 CPU",13,10,0
+msg_cpu80386                db "386 CPU",13,10,0
+msg_cpu80486                db "486 CPU",13,10,0
+msg_cpuvendor               db "Vendor ID: "
+cpuid_manufacturer          db "            ",13,10,0
+cpuid_id                    dd 0
