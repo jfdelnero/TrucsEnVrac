@@ -83,6 +83,12 @@ obj_state * loadobject(char * path)
 	{
 		memset(object,0,sizeof(obj_state));
 
+		object->file_path = malloc(strlen(path) + 1);
+		if(!object->file_path)
+			goto fatal_error;
+
+		strcpy(object->file_path, path);
+
 		fseek(in_file,0,SEEK_END);
 		object->obj_file_size = ftell(in_file);
 		fseek(in_file,0,SEEK_SET);
@@ -190,6 +196,9 @@ fatal_error:
 
 	if(object)
 	{
+		if(object->file_path)
+			free(object->file_path);
+
 		if(object->strings_buffer)
 			free(object->strings_buffer);
 
@@ -355,12 +364,19 @@ void free_obj(obj_state * object)
 {
 	if(object)
 	{
+		if(object->file_path)
+			free(object->file_path);
+
 		if(object->strings_buffer)
 			free(object->strings_buffer);
 
 		if(object->symbols)
 			free(object->symbols);
 
+		if(object->sections)
+			free(object->sections);
+
 		free(object);
 	}
 }
+

@@ -17,6 +17,7 @@ typedef struct _obj_state
 	coff_symbol_table * symbols;
 	coff_section_header * sections;
 
+	char * file_path;
 }obj_state;
 
 int get_symbol_name(char * n_name, uint8_t * strings_buffer,int strings_buffer_size,char* str);
