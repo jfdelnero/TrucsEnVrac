@@ -13,7 +13,7 @@
 #include "coff_format.h"
 #include "coff_access.h"
 
-int get_symbol_name(char * n_name, uint8_t * strings_buffer,int strings_buffer_size,char* str)
+int get_coff_symbol_name(char * n_name, uint8_t * strings_buffer,int strings_buffer_size,char* str)
 {
 	int i;
 	int lessthan8;
@@ -239,7 +239,7 @@ void print_obj_stat(obj_state * obj)
 
 			printf("Section n°%d : ",i + 1);
 
-			get_symbol_name((char*)&obj->sections[i].s_name, obj->strings_buffer,obj->string_table_size,(char*)&tmp_string);
+			get_coff_symbol_name((char*)&obj->sections[i].s_name, obj->strings_buffer,obj->string_table_size,(char*)&tmp_string);
 
 			printf("%s\n",tmp_string);
 			printf("Physical Address : 0x%X\n",obj->sections[i].s_paddr);
@@ -270,14 +270,14 @@ void print_obj_stat(obj_state * obj)
 
 				printf(" - ");
 
-				get_symbol_name((char*)&obj->symbols[i].n_name, obj->strings_buffer,obj->string_table_size,(char*)&tmp_string);
+				get_coff_symbol_name((char*)&obj->symbols[i].n_name, obj->strings_buffer,obj->string_table_size,(char*)&tmp_string);
 
 				printf("%s\n",tmp_string);
 				printf("n_value : 0x%X\n",obj->symbols[i].n_value);
 				printf("n_scnum : %d",obj->symbols[i].n_scnum);
 				if(obj->symbols[i].n_scnum && (obj->symbols[i].n_scnum < obj->file_header.f_nscns))
 				{
-					get_symbol_name((char*)&obj->sections[obj->symbols[i].n_scnum-1].s_name, obj->strings_buffer,obj->string_table_size,(char*)&tmp_string);
+					get_coff_symbol_name((char*)&obj->sections[obj->symbols[i].n_scnum-1].s_name, obj->strings_buffer,obj->string_table_size,(char*)&tmp_string);
 
 					printf(" - %s\n",tmp_string);
 				}
@@ -302,7 +302,7 @@ void print_obj_stat(obj_state * obj)
 						}
 						else
 						{
-							get_symbol_name((char*)&obj->sections[obj->symbols[i].n_scnum-1].s_name, obj->strings_buffer,obj->string_table_size,(char*)&tmp_string);
+							get_coff_symbol_name((char*)&obj->sections[obj->symbols[i].n_scnum-1].s_name, obj->strings_buffer,obj->string_table_size,(char*)&tmp_string);
 							if(!strcmp(tmp_string,".text"))
 								printf("Type: Function entry point\n");
 
@@ -358,6 +358,122 @@ void print_obj_stat(obj_state * obj)
 				auxcnt = obj->symbols[i].n_numaux;
 		}
 	}
+}
+
+int get_next_symbol(obj_state * obj, int type, int index)
+{
+	int i;
+	int auxcnt,ltype;
+	char tmp_string[1024];
+
+	auxcnt = 0;
+
+	if(index >= obj->file_header.f_nsyms)
+		return -1;
+
+	if(index < 0)
+	{
+		index = 0;
+	}
+	else
+	{
+		auxcnt = obj->symbols[index].n_numaux;
+		if(!auxcnt)
+			index++;
+
+		if(index >= obj->file_header.f_nsyms)
+			return -1;
+	}
+
+	for(i=index;i<obj->file_header.f_nsyms;i++)
+	{
+		if(!auxcnt)
+		{
+			ltype = -1;
+
+			switch( obj->symbols[i].n_sclass )
+			{
+				case 2:
+					if(!obj->symbols[i].n_scnum)
+					{
+						if(!obj->symbols[i].n_value)
+							ltype = SYMBOL_UNRESOLVED_EXT_SYMBOL_TYPE;
+						else
+							ltype = SYMBOL_UNINITIALISED_GLOBAL_VARIABLE_TYPE;
+					}
+					else
+					{
+						get_coff_symbol_name((char*)&obj->sections[obj->symbols[i].n_scnum-1].s_name, obj->strings_buffer,obj->string_table_size,(char*)&tmp_string);
+						if(!strcmp(tmp_string,".text"))
+							ltype = SYMBOL_FUNCTION_ENTRYPOINT_TYPE;
+
+						if(!strcmp(tmp_string,".data"))
+							ltype = SYMBOL_INITIALISED_GLOBAL_VARIABLE_TYPE;
+					}
+
+				break;
+
+				case 3:
+					if(!obj->symbols[i].n_value)
+					{
+						if(
+							!strcmp(tmp_string,".text") ||
+							!strcmp(tmp_string,".data") ||
+							!strcmp(tmp_string,".rdata") ||
+							!strcmp(tmp_string,".xdata") ||
+							!strcmp(tmp_string,".pdata") ||
+							!strcmp(tmp_string,".bss") )
+						{
+							ltype = SYMBOL_SECTION_TYPE;
+						}
+					}
+					else
+					{
+						if(
+							!strcmp(tmp_string,".data") ||
+							!strcmp(tmp_string,".rdata") ||
+							!strcmp(tmp_string,".xdata") ||
+							!strcmp(tmp_string,".pdata")
+						)
+						{
+							ltype = SYMBOL_INITIALISED_STATIC_VARIABLE_TYPE;
+						}
+
+						if( !strcmp(tmp_string,".bss") )
+						{
+							ltype = SYMBOL_UNINITIALISED_STATIC_VARIABLE_TYPE;
+						}
+					}
+
+				break;
+			}
+
+			if( ltype == type || (type == SYMBOL_ALL_TYPE))
+			{
+				return i;
+			}
+		}
+		else
+		{
+			auxcnt--;
+		}
+
+		if(!auxcnt)
+			auxcnt = obj->symbols[i].n_numaux;
+	}
+
+	return -1;
+
+}
+
+int get_symbol_name(obj_state * obj, int index, char *name)
+{
+	if(index >= obj->file_header.f_nsyms)
+		return -1;
+
+	get_coff_symbol_name((char*)&obj->symbols[index].n_name, obj->strings_buffer,obj->string_table_size,name);
+
+	return 0;
 }
 
 void free_obj(obj_state * object)

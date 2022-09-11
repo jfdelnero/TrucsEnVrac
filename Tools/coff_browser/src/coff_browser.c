@@ -15,8 +15,9 @@
 
 int main (int argc, char ** argv)
 {
-	int i;
+	int i,symbol_index;
 	obj_state ** objects;
+	char tmp_string[1024];
 
 	printf("COFF Browser v0.1\n");
 	printf("(c) 2022 Jean-François DEL NERO\n");
@@ -44,6 +45,26 @@ int main (int argc, char ** argv)
 			while(i<(argc-1))
 			{
 				print_obj_stat(objects[i]);
+				i++;
+			}
+
+			i = 0;
+			while(i<(argc-1))
+			{
+				symbol_index = -1;
+
+				do
+				{
+					symbol_index = get_next_symbol(objects[i], SYMBOL_FUNCTION_ENTRYPOINT_TYPE, symbol_index);
+					if( symbol_index >= 0 )
+					{
+						if(!get_symbol_name(objects[i], symbol_index, (char *)tmp_string))
+						{
+							printf("Entry point : %s\n",tmp_string);
+						}
+					}
+				}while(symbol_index >= 0);
+
 				i++;
 			}
 

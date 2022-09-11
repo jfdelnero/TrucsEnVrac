@@ -18,9 +18,27 @@ typedef struct _obj_state
 	coff_section_header * sections;
 
 	char * file_path;
+
+	int modified;
+
 }obj_state;
 
-int get_symbol_name(char * n_name, uint8_t * strings_buffer,int strings_buffer_size,char* str);
+int get_coff_symbol_name(char * n_name, uint8_t * strings_buffer,int strings_buffer_size,char* str);
 obj_state * loadobject(char * path);
 void print_obj_stat(obj_state * obj);
+
+enum{
+	SYMBOL_ALL_TYPE=0,
+	SYMBOL_UNRESOLVED_EXT_SYMBOL_TYPE,
+	SYMBOL_UNINITIALISED_GLOBAL_VARIABLE_TYPE,
+	SYMBOL_INITIALISED_GLOBAL_VARIABLE_TYPE,
+	SYMBOL_INITIALISED_STATIC_VARIABLE_TYPE,
+	SYMBOL_UNINITIALISED_STATIC_VARIABLE_TYPE,
+	SYMBOL_FUNCTION_ENTRYPOINT_TYPE,
+	SYMBOL_SECTION_TYPE
+};
+
+int get_next_symbol(obj_state * obj, int type, int index);
+int get_symbol_name(obj_state * obj, int index, char *name);
+
 void free_obj(obj_state * object);
