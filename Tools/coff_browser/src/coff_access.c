@@ -63,6 +63,63 @@ int get_coff_symbol_name(char * n_name, uint8_t * strings_buffer,int strings_buf
 	return 1;
 }
 
+int set_coff_symbol_name(char * n_name, uint8_t * strings_buffer,int strings_buffer_size,char* str)
+{
+	int i,maxsize;
+	int lessthan8;
+	uint32_t stringoffset;
+
+	lessthan8 = 0;
+	for(i=0;i<4;i++)
+	{
+		if(n_name[i])
+		{
+			lessthan8 = 1;
+		}
+	}
+
+	if(lessthan8)
+	{
+		i = 0;
+		while(str[i] && i < 8)
+		{
+			n_name[i] = str[i];
+			i++;
+		}
+
+		if( i < 8)
+			n_name[i] = 0;
+
+		return 1;
+	}
+
+	stringoffset = 0;
+
+	for(i=0;i<4;i++)
+	{
+		stringoffset |= (((uint32_t)(n_name[i+4]&0xFF)) << (i*8));
+	}
+
+	i = 0;
+	maxsize = 0;
+	while( ((stringoffset + i)  < strings_buffer_size) && strings_buffer[stringoffset + i] )
+	{
+		maxsize++;
+		i++;
+	}
+
+	i = 0;
+	while( ((stringoffset + i)  < (stringoffset+maxsize)) && str[i] )
+	{
+		strings_buffer[stringoffset + i] = str[i];
+		i++;
+	}
+
+	strings_buffer[stringoffset + i] = 0;
+
+	return 1;
+}
+
 obj_state * loadobject(char * path)
 {
 	int i;
@@ -474,6 +531,76 @@ int get_symbol_name(obj_state * obj, int index, char *name)
 	get_coff_symbol_name((char*)&obj->symbols[index].n_name, obj->strings_buffer,obj->string_table_size,name);
 
 	return 0;
+}
+
+int set_symbol_name(obj_state * obj, int index, char *name)
+{
+	if(index >= obj->file_header.f_nsyms)
+		return -1;
+
+	set_coff_symbol_name((char*)&obj->symbols[index].n_name, obj->strings_buffer,obj->string_table_size,name);
+
+	obj->modified = 1;
+
+	return 0;
+}
+
+int update_obj_file(obj_state * object)
+{
+	FILE * out_file;
+
+	out_file = NULL;
+
+	if(object)
+	{
+		if(object->modified)
+		{
+			printf("Updating %s ...\n",object->file_path);
+
+			out_file = fopen(object->file_path,"r+b");
+			if(!out_file)
+			{
+				printf("ERROR : Can't open output file %s !\n",object->file_path);
+				goto fatal_error;
+			}
+
+			if(fseek(out_file,object->file_header.f_symptr,SEEK_SET))
+			{
+				printf("ERROR : Error while seeking file %s !\n",object->file_path);
+				goto fatal_error;
+			}
+
+			if(fwrite(object->symbols,sizeof(coff_symbol_table) * object->file_header.f_nsyms,1,out_file) != 1)
+			{
+				printf("ERROR : Error while writing file %s !\n",object->file_path);
+				goto fatal_error;
+			}
+
+			if(fseek(out_file,object->string_table_offset,SEEK_SET))
+			{
+				printf("ERROR : Error while seeking file %s !\n",object->file_path);
+				goto fatal_error;
+			}
+
+			if(fwrite(object->strings_buffer,object->string_table_size,1,out_file) != 1)
+			{
+				printf("ERROR : Error while writing file %s !\n",object->file_path);
+				goto fatal_error;
+			}
+
+			fclose(out_file);
+
+			return 1;
+		}
+		return 0;
+	}
+
+fatal_error:
+
+	if(out_file)
+		fclose(out_file);
+
+	return -1;
 }
 
 void free_obj(obj_state * object)

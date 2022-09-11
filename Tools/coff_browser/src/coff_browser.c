@@ -61,10 +61,24 @@ int main (int argc, char ** argv)
 						if(!get_symbol_name(objects[i], symbol_index, (char *)tmp_string))
 						{
 							printf("Entry point : %s\n",tmp_string);
+							#if 0
+							if(!strcmp(tmp_string,"function_name_to_modify"))
+							{
+								printf("Modification\n");
+								set_symbol_name(objects[i], symbol_index, "func_test_hxc");
+							}
+							#endif
 						}
 					}
 				}while(symbol_index >= 0);
 
+				i++;
+			}
+
+			i = 0;
+			while(i<(argc-1))
+			{
+				update_obj_file(objects[i]);
 				i++;
 			}
 
