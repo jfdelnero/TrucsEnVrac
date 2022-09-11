@@ -425,6 +425,9 @@ int get_next_symbol(obj_state * obj, int type, int index)
 
 	auxcnt = 0;
 
+	if(!obj)
+		return -1;
+
 	if(index >= obj->file_header.f_nsyms)
 		return -1;
 
