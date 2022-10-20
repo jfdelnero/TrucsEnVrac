@@ -136,7 +136,7 @@ int getproperty(char * buf,char * propertyname, char * out)
 			offset = ptr2 - buf;
 			if(out)
 			{
-				while(*ptr2!='"')
+				while(*ptr2!='"' && *ptr2)
 				{
 					out[i] = *ptr2;
 					i++;
