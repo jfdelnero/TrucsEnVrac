@@ -220,7 +220,15 @@ int find_img(int index,char * html_buf, char * bpath, int *end_offset, char * pa
 		}
 
 		if(*ptr)
+		{
+			// remove xhtml slash...
+			if( *(ptr-1) == '/' )
+			{
+				*(ptr-1) = ' ';
+			}
+
 			end = ptr;
+		}
 	}
 
 	if(start && end)
