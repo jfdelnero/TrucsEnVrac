@@ -6,7 +6,7 @@ objects := $(sources:src/%.c=obj/%.o)
 
 all: output_dir patch_html
 
-patch_html:  $(objects) 
+patch_html:  $(objects)
 	${CC} -o $@    $^ $(LDFLAGS)
 
 $(objects): obj/%.o: src/%.c
