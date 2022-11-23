@@ -194,6 +194,10 @@ int find_img(int index,char * html_buf, char * bpath, int *end_offset, char * pa
 	char * start,*end;
 	char width_str[1024];
 	char height_str[1024];
+	int height_present,width_present;
+#if 0
+	float ratio;
+#endif
 
 	ptr = html_buf;
 	i = 0;
@@ -264,13 +268,13 @@ int find_img(int index,char * html_buf, char * bpath, int *end_offset, char * pa
 					{
 						printf("width property present but NOT matching : %s != %d\n",width_str,xsize);
 					}
+
+					width_present = 1;
 				}
 				else
 				{
 					printf("missing width property\n");
-
-					sprintf(width_str,"%d",xsize);
-					setproperty(tmpstr,"width", width_str);
+					width_present = 0;
 				}
 
 				if(getproperty(tmpstr,"height", height_str))
@@ -283,12 +287,68 @@ int find_img(int index,char * html_buf, char * bpath, int *end_offset, char * pa
 					{
 						printf("height property present but NOT matching : %s != %d\n",height_str,ysize);
 					}
+
+					height_present = 1;
 				}
 				else
 				{
 					printf("missing height property\n");
-					sprintf(height_str,"%d",ysize);
-					setproperty(tmpstr,"height", height_str);
+					height_present = 0;
+				}
+
+				if( !(width_present && height_present) )
+				{
+					if( width_present || height_present )
+					{
+						if(!width_present)
+						{
+							if(strchr(height_str,'%'))
+							{
+								// '%'
+								#if 0
+								ratio = ((float)(atoi(height_str)) / (float)100);
+
+								sprintf(width_str,"%d",(int)((float)xsize * ratio));
+								setproperty(tmpstr,"width", width_str);
+								sprintf(height_str,"%d",(int)((float)ysize * ratio));
+								setproperty(tmpstr,"height", height_str);
+								#endif
+							}
+							else
+							{
+								sprintf(width_str,"%d",(int)((float)xsize * ((float)atoi(height_str) / (float)ysize)));
+								setproperty(tmpstr,"width", width_str);
+							}
+						}
+
+						if(!height_present)
+						{
+							if(strchr(width_str,'%'))
+							{
+								// '%'
+								#if 0
+								ratio = ((float)(atoi(width_str)) / (float)100);
+
+								sprintf(width_str,"%d",(int)((float)xsize * ratio));
+								setproperty(tmpstr,"width", width_str);
+								sprintf(height_str,"%d",(int)((float)ysize * ratio));
+								setproperty(tmpstr,"height", height_str);
+								#endif
+							}
+							else
+							{
+								sprintf(height_str,"%d",(int)((float)ysize * ((float)atoi(width_str) / (float)xsize)));
+								setproperty(tmpstr,"height", height_str);
+							}
+						}
+					}
+					else
+					{
+						sprintf(width_str,"%d",xsize);
+						setproperty(tmpstr,"width", width_str);
+						sprintf(height_str,"%d",ysize);
+						setproperty(tmpstr,"height", height_str);
+					}
 				}
 
 				if(!getproperty(tmpstr,"alt", altstr))
@@ -339,7 +399,7 @@ int patch_html_page(char * path)
 		basepath(path, bpath);
 
 		strcpy(ppath,path);
-		strcat(ppath,"_patched");
+		//strcat(ppath,"_patched");
 
 		f = fopen(ppath,"wb");
 		if(f)
