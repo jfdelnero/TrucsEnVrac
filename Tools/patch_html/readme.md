@@ -5,5 +5,7 @@ It also add any missing "alt" img attribute.
 
 Run on Linux and need the "convert" tool.
 
+Usage : ./patch_html [html files paths]
+
 Written by: Jean-François DEL NERO
 
