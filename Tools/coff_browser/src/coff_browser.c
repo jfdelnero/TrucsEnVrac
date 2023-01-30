@@ -33,7 +33,7 @@ int main (int argc, char ** argv)
 			while(i<(argc-1))
 			{
 				printf("Loading %s...\n",argv[i+1]);
-				objects[i] = loadobject(argv[i+1]);
+				objects[i] = coff_load_obj(argv[i+1]);
 				if(!objects[i])
 				{
 					printf("Error while loading %s...\n",argv[i+1]);
@@ -44,7 +44,7 @@ int main (int argc, char ** argv)
 			i = 0;
 			while(i<(argc-1))
 			{
-				print_obj_stat(objects[i]);
+				coff_print_obj_stat(objects[i]);
 				i++;
 			}
 
@@ -55,10 +55,10 @@ int main (int argc, char ** argv)
 
 				do
 				{
-					symbol_index = get_next_symbol(objects[i], SYMBOL_FUNCTION_ENTRYPOINT_TYPE, symbol_index);
+					symbol_index = coff_get_next_symbol(objects[i], SYMBOL_FUNCTION_ENTRYPOINT_TYPE, symbol_index);
 					if( symbol_index >= 0 )
 					{
-						if(!get_symbol_name(objects[i], symbol_index, (char *)tmp_string))
+						if(!coff_get_symbol_name(objects[i], symbol_index, (char *)tmp_string))
 						{
 							printf("Entry point : %s\n",tmp_string);
 							#if 0
@@ -78,14 +78,14 @@ int main (int argc, char ** argv)
 			i = 0;
 			while(i<(argc-1))
 			{
-				update_obj_file(objects[i]);
+				coff_update_obj_file(objects[i]);
 				i++;
 			}
 
 			i = 0;
 			while(i<(argc-1))
 			{
-				free_obj(objects[i]);
+				coff_free_obj(objects[i]);
 				i++;
 			}
 

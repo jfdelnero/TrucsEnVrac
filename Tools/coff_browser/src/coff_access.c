@@ -13,7 +13,7 @@
 #include "coff_format.h"
 #include "coff_access.h"
 
-int get_coff_symbol_name(char * n_name, uint8_t * strings_buffer,int strings_buffer_size,char* str)
+int coff_get_str_symbol_name(char * n_name, uint8_t * strings_buffer,int strings_buffer_size,char* str)
 {
 	int i;
 	int lessthan8;
@@ -63,7 +63,7 @@ int get_coff_symbol_name(char * n_name, uint8_t * strings_buffer,int strings_buf
 	return 1;
 }
 
-int set_coff_symbol_name(char * n_name, uint8_t * strings_buffer,int strings_buffer_size,char* str)
+int coff_set_str_symbol_name(char * n_name, uint8_t * strings_buffer,int strings_buffer_size,char* str)
 {
 	int i,maxsize;
 	int lessthan8;
@@ -120,7 +120,7 @@ int set_coff_symbol_name(char * n_name, uint8_t * strings_buffer,int strings_buf
 	return 1;
 }
 
-obj_state * loadobject(char * path)
+obj_state * coff_load_obj(char * path)
 {
 	int i;
 	FILE * in_file;
@@ -128,7 +128,7 @@ obj_state * loadobject(char * path)
 
 	object = NULL;
 
-	in_file = fopen(path,"r");
+	in_file = fopen(path,"rb");
 	if(!in_file)
 	{
 		printf("ERROR : Can't open input file %s !\n",path);
@@ -271,7 +271,7 @@ fatal_error:
 	return NULL;
 }
 
-void print_obj_stat(obj_state * obj)
+void coff_print_obj_stat(obj_state * obj)
 {
 	int auxcnt;
 	int i,j;
@@ -296,7 +296,7 @@ void print_obj_stat(obj_state * obj)
 
 			printf("Section n°%d : ",i + 1);
 
-			get_coff_symbol_name((char*)&obj->sections[i].s_name, obj->strings_buffer,obj->string_table_size,(char*)&tmp_string);
+			coff_get_str_symbol_name((char*)&obj->sections[i].s_name, obj->strings_buffer,obj->string_table_size,(char*)&tmp_string);
 
 			printf("%s\n",tmp_string);
 			printf("Physical Address : 0x%X\n",obj->sections[i].s_paddr);
@@ -327,14 +327,14 @@ void print_obj_stat(obj_state * obj)
 
 				printf(" - ");
 
-				get_coff_symbol_name((char*)&obj->symbols[i].n_name, obj->strings_buffer,obj->string_table_size,(char*)&tmp_string);
+				coff_get_str_symbol_name((char*)&obj->symbols[i].n_name, obj->strings_buffer,obj->string_table_size,(char*)&tmp_string);
 
 				printf("%s\n",tmp_string);
 				printf("n_value : 0x%X\n",obj->symbols[i].n_value);
 				printf("n_scnum : %d",obj->symbols[i].n_scnum);
 				if(obj->symbols[i].n_scnum && (obj->symbols[i].n_scnum < obj->file_header.f_nscns))
 				{
-					get_coff_symbol_name((char*)&obj->sections[obj->symbols[i].n_scnum-1].s_name, obj->strings_buffer,obj->string_table_size,(char*)&tmp_string);
+					coff_get_str_symbol_name((char*)&obj->sections[obj->symbols[i].n_scnum-1].s_name, obj->strings_buffer,obj->string_table_size,(char*)&tmp_string);
 
 					printf(" - %s\n",tmp_string);
 				}
@@ -359,11 +359,11 @@ void print_obj_stat(obj_state * obj)
 						}
 						else
 						{
-							get_coff_symbol_name((char*)&obj->sections[obj->symbols[i].n_scnum-1].s_name, obj->strings_buffer,obj->string_table_size,(char*)&tmp_string);
-							if(!strcmp(tmp_string,".text"))
+							coff_get_str_symbol_name((char*)&obj->sections[obj->symbols[i].n_scnum-1].s_name, obj->strings_buffer,obj->string_table_size,(char*)&tmp_string);
+							if(!strncmp(tmp_string,".text",5))
 								printf("Type: Function entry point\n");
 
-							if(!strcmp(tmp_string,".data"))
+							if(!strncmp(tmp_string,".data",5))
 								printf("Type: Initialised global variable\n");
 						}
 
@@ -373,12 +373,12 @@ void print_obj_stat(obj_state * obj)
 						if(!obj->symbols[i].n_value)
 						{
 							if(
-								!strcmp(tmp_string,".text") ||
-								!strcmp(tmp_string,".data") ||
-								!strcmp(tmp_string,".rdata") ||
-								!strcmp(tmp_string,".xdata") ||
-								!strcmp(tmp_string,".pdata") ||
-								!strcmp(tmp_string,".bss") )
+								!strncmp(tmp_string,".text",5) ||
+								!strncmp(tmp_string,".data",5) ||
+								!strncmp(tmp_string,".rdata",6) ||
+								!strncmp(tmp_string,".xdata",6) ||
+								!strncmp(tmp_string,".pdata",6) ||
+								!strncmp(tmp_string,".bss",4) )
 							{
 								printf("Type: Section Symbol indicating start of Section\n");
 							}
@@ -417,7 +417,7 @@ void print_obj_stat(obj_state * obj)
 	}
 }
 
-int get_next_symbol(obj_state * obj, int type, int index)
+int coff_get_next_symbol(obj_state * obj, int type, int index)
 {
 	int i;
 	int auxcnt,ltype;
@@ -463,11 +463,11 @@ int get_next_symbol(obj_state * obj, int type, int index)
 					}
 					else
 					{
-						get_coff_symbol_name((char*)&obj->sections[obj->symbols[i].n_scnum-1].s_name, obj->strings_buffer,obj->string_table_size,(char*)&tmp_string);
-						if(!strcmp(tmp_string,".text"))
+						coff_get_str_symbol_name((char*)&obj->sections[obj->symbols[i].n_scnum-1].s_name, obj->strings_buffer,obj->string_table_size,(char*)&tmp_string);
+						if(!strncmp(tmp_string,".text",5))
 							ltype = SYMBOL_FUNCTION_ENTRYPOINT_TYPE;
 
-						if(!strcmp(tmp_string,".data"))
+						if(!strncmp(tmp_string,".data",5))
 							ltype = SYMBOL_INITIALISED_GLOBAL_VARIABLE_TYPE;
 					}
 
@@ -477,12 +477,12 @@ int get_next_symbol(obj_state * obj, int type, int index)
 					if(!obj->symbols[i].n_value)
 					{
 						if(
-							!strcmp(tmp_string,".text") ||
-							!strcmp(tmp_string,".data") ||
-							!strcmp(tmp_string,".rdata") ||
-							!strcmp(tmp_string,".xdata") ||
-							!strcmp(tmp_string,".pdata") ||
-							!strcmp(tmp_string,".bss") )
+							!strncmp(tmp_string,".text",5) ||
+							!strncmp(tmp_string,".data",5) ||
+							!strncmp(tmp_string,".rdata",6) ||
+							!strncmp(tmp_string,".xdata",6) ||
+							!strncmp(tmp_string,".pdata",6) ||
+							!strncmp(tmp_string,".bss",4) )
 						{
 							ltype = SYMBOL_SECTION_TYPE;
 						}
@@ -526,29 +526,29 @@ int get_next_symbol(obj_state * obj, int type, int index)
 
 }
 
-int get_symbol_name(obj_state * obj, int index, char *name)
+int coff_get_symbol_name(obj_state * obj, int index, char *name)
 {
 	if(index >= obj->file_header.f_nsyms)
 		return -1;
 
-	get_coff_symbol_name((char*)&obj->symbols[index].n_name, obj->strings_buffer,obj->string_table_size,name);
+	coff_get_str_symbol_name((char*)&obj->symbols[index].n_name, obj->strings_buffer,obj->string_table_size,name);
 
 	return 0;
 }
 
-int set_symbol_name(obj_state * obj, int index, char *name)
+int coff_set_symbol_name(obj_state * obj, int index, char *name)
 {
 	if(index >= obj->file_header.f_nsyms)
 		return -1;
 
-	set_coff_symbol_name((char*)&obj->symbols[index].n_name, obj->strings_buffer,obj->string_table_size,name);
+	coff_set_str_symbol_name((char*)&obj->symbols[index].n_name, obj->strings_buffer,obj->string_table_size,name);
 
 	obj->modified = 1;
 
 	return 0;
 }
 
-int update_obj_file(obj_state * object)
+int coff_update_obj_file(obj_state * object)
 {
 	FILE * out_file;
 
@@ -606,7 +606,7 @@ fatal_error:
 	return -1;
 }
 
-void free_obj(obj_state * object)
+void coff_free_obj(obj_state * object)
 {
 	if(object)
 	{

@@ -23,11 +23,11 @@ typedef struct _obj_state
 
 }obj_state;
 
-int get_coff_symbol_name(char * n_name, uint8_t * strings_buffer,int strings_buffer_size,char* str);
-int set_coff_symbol_name(char * n_name, uint8_t * strings_buffer,int strings_buffer_size,char* str);
+int coff_get_str_symbol_name(char * n_name, uint8_t * strings_buffer,int strings_buffer_size,char* str);
+int coff_set_str_symbol_name(char * n_name, uint8_t * strings_buffer,int strings_buffer_size,char* str);
 
-obj_state * loadobject(char * path);
-void print_obj_stat(obj_state * obj);
+obj_state * coff_load_obj(char * path);
+void coff_print_obj_stat(obj_state * obj);
 
 enum{
 	SYMBOL_ALL_TYPE=0,
@@ -40,10 +40,10 @@ enum{
 	SYMBOL_SECTION_TYPE
 };
 
-int get_next_symbol(obj_state * obj, int type, int index);
-int get_symbol_name(obj_state * obj, int index, char *name);
-int set_symbol_name(obj_state * obj, int index, char *name);
+int coff_get_next_symbol(obj_state * obj, int type, int index);
+int coff_get_symbol_name(obj_state * obj, int index, char *name);
+int coff_set_symbol_name(obj_state * obj, int index, char *name);
 
-int update_obj_file(obj_state * object);
+int coff_update_obj_file(obj_state * object);
 
-void free_obj(obj_state * object);
+void coff_free_obj(obj_state * object);
