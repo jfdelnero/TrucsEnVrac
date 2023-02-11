@@ -18,6 +18,8 @@ int coff_get_str_symbol_name(char * n_name, uint8_t * strings_buffer,int strings
 	int i;
 	int lessthan8;
 	uint32_t stringoffset;
+	char tmp_buf[8];
+	char *ptr;
 
 	str[0] = 0;
 
@@ -32,6 +34,31 @@ int coff_get_str_symbol_name(char * n_name, uint8_t * strings_buffer,int strings
 
 	if(lessthan8)
 	{
+		if( n_name[0] == '/' )
+		{
+			memcpy(tmp_buf,&n_name[1], 7);
+			tmp_buf[7] = 0;
+
+			ptr = &tmp_buf[0];
+			if( *ptr >= '0' && *ptr <= '9' )
+			{
+				stringoffset = strtol (tmp_buf, &ptr, 10);
+
+				if(stringoffset >= 0 && (*ptr == '\0') )
+				{
+					i = 0;
+					while( ((int)(stringoffset + i)  < strings_buffer_size) && strings_buffer[stringoffset + i] )
+					{
+						str[i] = strings_buffer[stringoffset + i];
+						i++;
+					}
+
+					return 1;
+				}
+			}
+			return 0;
+		}
+
 		i = 0;
 		while(n_name[i] && i < 8)
 		{
@@ -52,7 +79,7 @@ int coff_get_str_symbol_name(char * n_name, uint8_t * strings_buffer,int strings
 	}
 
 	i = 0;
-	while( ((stringoffset + i)  < strings_buffer_size) && strings_buffer[stringoffset + i] )
+	while( ((int)(stringoffset + i)  < strings_buffer_size) && strings_buffer[stringoffset + i] )
 	{
 		str[i] = strings_buffer[stringoffset + i];
 		i++;
@@ -102,7 +129,7 @@ int coff_set_str_symbol_name(char * n_name, uint8_t * strings_buffer,int strings
 
 	i = 0;
 	maxsize = 0;
-	while( ((stringoffset + i)  < strings_buffer_size) && strings_buffer[stringoffset + i] )
+	while( ((int)(stringoffset + i)  < strings_buffer_size) && strings_buffer[stringoffset + i] )
 	{
 		maxsize++;
 		i++;
@@ -560,7 +587,7 @@ int coff_update_obj_file(obj_state * object)
 		{
 			printf("Updating %s ...\n",object->file_path);
 
-			out_file = fopen(object->file_path,"r+b");
+			out_file = fopen(object->file_path,"rb+");
 			if(!out_file)
 			{
 				printf("ERROR : Can't open output file %s !\n",object->file_path);
