@@ -6,7 +6,7 @@ objects := $(sources:src/%.c=obj/%.o)
 
 all: output_dir align_file_size
 
-pad_file:  $(objects) 
+align_file_size:  $(objects) 
 	${CC} -o $@    $^ $(LDFLAGS) -lpthread
 
 $(objects): obj/%.o: src/%.c
