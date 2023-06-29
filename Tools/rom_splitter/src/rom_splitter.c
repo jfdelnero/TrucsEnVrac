@@ -266,7 +266,6 @@ error:
 	return;
 }
 
-
 int isOption(int argc, char* argv[],char * paramtosearch,char * argtoparam)
 {
 	int param=1;
@@ -274,18 +273,19 @@ int isOption(int argc, char* argv[],char * paramtosearch,char * argtoparam)
 
 	char option[512];
 
-	memset(option,0,512);
+	memset(option,0,sizeof(option));
+
 	while(param<=argc)
 	{
 		if(argv[param])
 		{
 			if(argv[param][0]=='-')
 			{
-				memset(option,0,512);
+				memset(option,0,sizeof(option));
 
 				j=0;
 				i=1;
-				while( argv[param][i] && argv[param][i]!=':')
+				while( argv[param][i] && argv[param][i]!=':' && ( j < (sizeof(option) - 1)) )
 				{
 					option[j]=argv[param][i];
 					i++;
@@ -296,11 +296,13 @@ int isOption(int argc, char* argv[],char * paramtosearch,char * argtoparam)
 				{
 					if(argtoparam)
 					{
+						argtoparam[0] = 0;
+
 						if(argv[param][i]==':')
 						{
 							i++;
 							j=0;
-							while( argv[param][i] )
+							while( argv[param][i] && j < (512 - 1) )
 							{
 								argtoparam[j]=argv[param][i];
 								i++;
