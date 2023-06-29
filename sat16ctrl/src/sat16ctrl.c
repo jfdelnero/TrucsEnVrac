@@ -5,14 +5,6 @@
 // Written by: Jean-François DEL NERO
 ///////////////////////////////////////////////////////////////////////////////////
 
-/*!
- * @file    APP_JESD_Tester.c
- * @brief   AD9163 Test application
- * @Copyright   (C) 2021  Viveris Technologies
- * @author  Jean-François DEL NERO Jean-Francois.DELNERO@viveris.fr
- * @date    27/09/2021
- */
-
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
@@ -129,6 +121,8 @@ int main(int argc, char* argv[])
 	unsigned char tmpstr2[256];
 	unsigned char tx_frame[3 + 256 + 3];
 	int i,frame_size;
+
+	fprintf(stdout, "sat16ctrl v0.2\n");
 
 	memset(&app_ctx, 0, sizeof(sat16ctrl_ctx));
 

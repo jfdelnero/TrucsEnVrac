@@ -4,15 +4,31 @@ Usage :
 
 Funtion 0x38 :
 
-Set relay 1 to ON
-./sat16ctrl -comport:/dev/ttyUSB0 -address:0x20 -write:380001
+Set relay 1 to ON and all others to OFF
+./sat16ctrl -comport:/dev/ttyUSB0 -address:0x20 -write:380100
 
 Set all relays to ON
 ./sat16ctrl -comport:/dev/ttyUSB0 -address:0x20 -write:38FFFF
 
-SAT16 Protocol:
+Funtion 0x34 :
 
-AA (Start of Frame) XX (Address) SS (Size) MM (Message) DDDD... (Data) CC CC (CRC) 04 (End of frame)
+Switch on relay 1
+./sat16ctrl -comport:/dev/ttyUSB0 -address:0x20 -write:3401FF
+
+Switch on relay 6
+./sat16ctrl -comport:/dev/ttyUSB0 -address:0x20 -write:3406FF
+
+Switch off relay 1
+./sat16ctrl -comport:/dev/ttyUSB0 -address:0x20 -write:340100
+
+Switch on relay 3 during 4 seconds
+./sat16ctrl -comport:/dev/ttyUSB0 -address:0x20 -write:340304
+
+SAT16 protocol:
+
+Serial : 8bits, no parity, 1 stop bit, default bitrate : 4800.
+
+Frame : AA (Start of Frame) XX (Address) SS (Size) MM (Message) DDDD... (Data) CC CC (CRC) 04 (End of frame)
 
 CRC : CRC-16/XMODEM (Poly 0x1021, Init 0x0000)
 
@@ -31,5 +47,7 @@ Full frames examples :
 AA 20 03 38 FF FF 85 49 04
 
 AA 20 03 38 55 55 63 5C 04
+
+AA 20 03 34 03 55 B2 24 04
 
 (c) Jean-François DEL NERO
