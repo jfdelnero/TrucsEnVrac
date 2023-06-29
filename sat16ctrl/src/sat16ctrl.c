@@ -156,7 +156,8 @@ int main(int argc, char* argv[])
 
 		i = 0;
 		while(1)
-		{	hex[0] = tmpstr[i];
+		{
+			hex[0] = tmpstr[i];
 			hex[1] = tmpstr[i+1];
 			hex[2] = 0;
 
@@ -172,10 +173,6 @@ int main(int argc, char* argv[])
 		}
 
 		fprintf(stdout, "Write at 0x%.8X\n", app_ctx.current_address);
-
-		//tmpstr2[0] = 0x38;
-		//tmpstr2[1] = 0xAA;
-		//tmpstr2[2] = 0x55;
 
 		frame_size = encode_sat16_frame(&app_ctx, app_ctx.current_address, (unsigned char*)&tmpstr2,i/2, (unsigned char*)&tx_frame);
 
