@@ -4,7 +4,7 @@
 
 ### Funtion 0x38 (Multiple relays control)
 
-Set relay 1 to ON and all others to OFF
+Switch on relay n°1 and switch off all others.
 
 ```c
 ./sat16ctrl -comport:/dev/ttyUSB0 -address:0x20 -write:380100
@@ -18,28 +18,36 @@ Set all relays to ON
 
 ### Funtion 0x34 (One relay control)
 
-Switch on relay 1
+Switch on relay n°1
 
 ```c
 ./sat16ctrl -comport:/dev/ttyUSB0 -address:0x20 -write:3401FF
 ```
 
-Switch on relay 6
+Switch on relay n°6
 
 ```c
 ./sat16ctrl -comport:/dev/ttyUSB0 -address:0x20 -write:3406FF
 ```
 
-Switch off relay 1
+Switch off relay n°1
 
 ```c
 ./sat16ctrl -comport:/dev/ttyUSB0 -address:0x20 -write:340100
 ```
 
-Switch on relay 3 during 4 seconds
+Switch on relay n°3 during 4 seconds
 
 ```c
 ./sat16ctrl -comport:/dev/ttyUSB0 -address:0x20 -write:340304
+```
+
+### Funtion 0x09 (Clear Memory)
+
+Switch off all relays
+
+```c
+./sat16ctrl -comport:/dev/ttyUSB0 -address:0x20 -write:09
 ```
 
 ## SAT16 protocol
