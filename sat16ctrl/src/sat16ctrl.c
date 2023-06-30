@@ -126,6 +126,8 @@ int main(int argc, char* argv[])
 
 	memset(&app_ctx, 0, sizeof(sat16ctrl_ctx));
 
+	app_ctx.current_address = 0x20; // First network address is 0x20.
+
 	// help option...
 	if (isOption(argc, argv, "help", 0) > 0)
 	{
