@@ -16,6 +16,7 @@
 #ifndef ANSI_FILE
 #include <fcntl.h>
 #include <unistd.h>
+#include <termios.h>
 #endif
 
 #include "sat16ctrl_ctx.h"
@@ -85,6 +86,7 @@ int isOption(int argc, char* argv[],char * paramtosearch,char * argtoparam)
 
 	return 0;
 }
+
 int strtoValue(char* str_return)
 {
 	int value;
@@ -126,7 +128,7 @@ void printhelp(sat16ctrl_ctx * app_ctx, char* argv[])
 #ifdef ANSI_FILE
 int fread_to(FILE * file, unsigned char * buf)
 #else
-int fread_to(int file, unsigned char * buf)	
+int fread_to(int file, unsigned char * buf)
 #endif
 {
 	fd_set rfds;
@@ -169,6 +171,83 @@ int fread_to(int file, unsigned char * buf)
 	return 0;
 }
 
+#ifdef ANSI_FILE
+FILE* open_and_cfg_serial(char *devpath)
+#else
+int open_and_cfg_serial(char *devpath)
+#endif
+{
+
+#ifdef ANSI_FILE
+	FILE * port;
+
+	port = fopen(devpath,"wb");
+
+#else
+	struct termios options;
+	int port,ret;
+
+	port = open(app_ctx.com_port_str, O_RDWR | O_NOCTTY);
+	if(port == -1)
+		return -1;
+
+	usleep(10000);
+
+	tcflush(port, TCIOFLUSH);
+
+	ret = tcgetattr(port, &options);
+	if (ret)
+	{
+		close(port);
+		return -1;
+	}
+
+	//Disable these flags :
+	//INLCR: Translate NL to CR on input.
+	//IGNCR: Ignore carriage return on input.
+	//ICRNL: Translate carriage return to newline on input (unless IGNCR is set).
+	//IXON:  Enable XON/XOFF flow control on output.
+	//IXOFF: Enable XON/XOFF flow control on input.
+	options.c_iflag &= ~(INLCR | IGNCR | ICRNL | IXON | IXOFF);
+
+	//Disable these flags :
+	//ONLCR: (XSI) Map NL to CR-NL on output.
+	//OCRNL: Map CR to NL on output.
+	//ONOCR: Don't output CR at column 0.
+	options.c_oflag &= ~(ONLCR | OCRNL | ONOCR);
+
+	//Disable these flags :
+	//ECHO:   Echo input characters.
+	//ECHONL: If ICANON is also set, echo the NL character even if ECHO is not set.
+	//ICANON: Enable canonical mode (described below).
+	//ISIG:   When any of the characters INTR, QUIT, SUSP, or DSUSP are received, generate the corresponding signal.
+	//IEXTEN: Enable implementation-defined input processing.
+	options.c_lflag &= ~(ECHO | ECHONL | ICANON | ISIG | IEXTEN);
+
+	// 8N1
+	options.c_cflag &= ~PARENB;
+	options.c_cflag &= ~CSTOPB;
+	options.c_cflag &= ~CSIZE;
+	options.c_cflag |= CS8;
+
+	options.c_cc[VTIME] = 7;
+	options.c_cc[VMIN] = 0;
+
+	cfsetospeed(&options, B4800);
+	cfsetispeed(&options, cfgetospeed(&options));
+
+	ret = tcsetattr(port, TCSANOW, &options);
+	if (ret)
+	{
+		close(port);
+		return -1;
+	}
+
+#endif
+
+	return port;
+}
+
 int main(int argc, char* argv[])
 {
 	char tmpstr[MAX_STR_SIZE];
@@ -179,7 +258,9 @@ int main(int argc, char* argv[])
 	unsigned char byte;
 	sat_16_rx_frame_state rx_frame;
 #endif
-	fprintf(stdout, "sat16ctrl v0.2\n");
+	ret = 0;
+
+	fprintf(stdout, "sat16ctrl v0.4\n");
 
 	memset(&app_ctx, 0, sizeof(sat16ctrl_ctx));
 
@@ -195,11 +276,7 @@ int main(int argc, char* argv[])
 	{
 		fprintf(stdout, "Serial port : %s\n", app_ctx.com_port_str);
 
-#ifdef ANSI_FILE
-		app_ctx.serialport = fopen(app_ctx.com_port_str,"wb");
-#else
-		app_ctx.serialport = open(app_ctx.com_port_str, O_RDWR | O_NOCTTY | O_NDELAY );
-#endif
+		app_ctx.serialport = open_and_cfg_serial(app_ctx.com_port_str);
 
 		if(!app_ctx.serialport || app_ctx.serialport < 0)
 		{
@@ -243,7 +320,7 @@ int main(int argc, char* argv[])
 		{
 			if(app_ctx.serialport > 0)
 			{
-				ret = -4;
+				ret = 0;
 #ifdef ANSI_FILE
 				fwrite(&tx_frame,frame_size,1,app_ctx.serialport);
 				fflush(app_ctx.serialport);
@@ -254,6 +331,7 @@ int main(int argc, char* argv[])
 				}
 #endif
 #ifdef WAITACK
+				ret = -4;
 				rx_frame.frame_size = 0;
 				while( fread_to(app_ctx.serialport, &byte) > 0 )
 				{
@@ -269,10 +347,24 @@ int main(int argc, char* argv[])
 					}
 				}
 
-				if( ret > 0 )
+				if( ret == 1 )
+				{
 					fprintf(stderr, "Ack frame received !\n");
+					ret = 0;
+				}
 				else
+				{
 					fprintf(stderr, "Ack frame error (%d) !\n",ret);
+					if(!ret)
+						ret = -6;
+				}
+
+				printf("Received Frame : ");
+				for(i=0;i<rx_frame.frame_size;i++)
+				{
+					printf("%.2X ",rx_frame.full_frame[i]);
+				}
+				printf("\n");
 #endif
 			}
 			else
@@ -304,5 +396,6 @@ int main(int argc, char* argv[])
 		close(app_ctx.serialport);
 #endif
 	}
-	return 0;
+
+	return ret;
 }

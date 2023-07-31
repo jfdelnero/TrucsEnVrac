@@ -1,5 +1,5 @@
 
-override CFLAGS += -Wall -O3
+override CFLAGS += -Wall -O3 -DWAITACK
 
 sources := $(wildcard src/*.c)
 objects := $(sources:src/%.c=obj/%.o)

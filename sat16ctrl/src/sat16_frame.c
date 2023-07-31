@@ -49,7 +49,7 @@ int decode_sat16_frame(sat16ctrl_ctx * ctx, sat_16_rx_frame_state * frame_state,
 	{
 		case 0:
 			// Wait Start byte
-			if(rx_byte == 0xAA)
+			if( (rx_byte == 0xAA) || (rx_byte == 0x41) )
 			{
 				frame_state->full_frame[frame_state->frame_size++] = rx_byte;
 			}
