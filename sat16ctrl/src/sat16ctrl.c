@@ -4,11 +4,19 @@
 //
 // Written by: Jean-François DEL NERO
 ///////////////////////////////////////////////////////////////////////////////////
+#ifndef ANSI_FILE
+#define _GNU_SOURCE 1
+#endif
 
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+
+#ifndef ANSI_FILE
+#include <fcntl.h>
+#include <unistd.h>
+#endif
 
 #include "sat16ctrl_ctx.h"
 #include "sat16_frame.h"
@@ -115,13 +123,62 @@ void printhelp(sat16ctrl_ctx * app_ctx, char* argv[])
 	fprintf(stdout, "\n");
 }
 
+#ifdef ANSI_FILE
+int fread_to(FILE * file, unsigned char * buf)
+#else
+int fread_to(int file, unsigned char * buf)	
+#endif
+{
+	fd_set rfds;
+	struct timeval tv;
+	int ret, fd;
+
+#ifdef ANSI_FILE
+	fd = fileno(file);
+#else
+	fd = file;
+#endif
+	FD_ZERO(&rfds);
+	FD_SET(fd, &rfds);
+
+	tv.tv_sec = 2;
+	tv.tv_usec = 0;
+
+	ret = select(fd+1, &rfds, NULL, NULL, &tv);
+
+	if(ret == 0)
+	{
+		fprintf(stderr, "Poll timed out !\n");
+		return -1;
+	}
+	else if (ret < 0)
+	{
+		return -2;
+	}
+	else if(FD_ISSET(fd, &rfds))
+	{
+#ifdef ANSI_FILE
+		ret = fread(buf, 1, 1, file);
+#else
+		ret = read(file, buf, 1);
+#endif
+
+		return ret;
+	}
+
+	return 0;
+}
+
 int main(int argc, char* argv[])
 {
 	char tmpstr[MAX_STR_SIZE];
 	unsigned char tmpstr2[256];
 	unsigned char tx_frame[3 + 256 + 3];
-	int i,frame_size;
-
+	int i,frame_size,ret;
+#ifdef WAITACK
+	unsigned char byte;
+	sat_16_rx_frame_state rx_frame;
+#endif
 	fprintf(stdout, "sat16ctrl v0.2\n");
 
 	memset(&app_ctx, 0, sizeof(sat16ctrl_ctx));
@@ -138,9 +195,13 @@ int main(int argc, char* argv[])
 	{
 		fprintf(stdout, "Serial port : %s\n", app_ctx.com_port_str);
 
+#ifdef ANSI_FILE
 		app_ctx.serialport = fopen(app_ctx.com_port_str,"wb");
+#else
+		app_ctx.serialport = open(app_ctx.com_port_str, O_RDWR | O_NOCTTY | O_NDELAY );
+#endif
 
-		if(!app_ctx.serialport)
+		if(!app_ctx.serialport || app_ctx.serialport < 0)
 		{
 			fprintf(stderr, "Serial port access error !\n");
 			exit(-1);
@@ -180,10 +241,39 @@ int main(int argc, char* argv[])
 
 		if(frame_size > 0)
 		{
-			if(app_ctx.serialport)
+			if(app_ctx.serialport > 0)
 			{
+				ret = -4;
+#ifdef ANSI_FILE
 				fwrite(&tx_frame,frame_size,1,app_ctx.serialport);
 				fflush(app_ctx.serialport);
+#else
+				if ( write(app_ctx.serialport, &tx_frame, frame_size) != frame_size )
+				{
+					ret = -5;
+				}
+#endif
+#ifdef WAITACK
+				rx_frame.frame_size = 0;
+				while( fread_to(app_ctx.serialport, &byte) > 0 )
+				{
+					ret = decode_sat16_frame(&app_ctx, &rx_frame, byte );
+					if(ret == 1)
+					{
+						break;
+					}
+
+					if( ret < 0 )
+					{
+						break;
+					}
+				}
+
+				if( ret > 0 )
+					fprintf(stderr, "Ack frame received !\n");
+				else
+					fprintf(stderr, "Ack frame error (%d) !\n",ret);
+#endif
 			}
 			else
 			{
@@ -207,7 +297,12 @@ int main(int argc, char* argv[])
 	}
 
 	if( app_ctx.serialport )
+	{
+#ifdef ANSI_FILE
 		fclose(app_ctx.serialport);
-
+#else
+		close(app_ctx.serialport);
+#endif
+	}
 	return 0;
 }

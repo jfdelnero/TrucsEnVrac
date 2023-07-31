@@ -20,5 +20,9 @@ typedef struct sat16ctrl_ctx_
 	unsigned char current_address;
 	unsigned char current_data;
 
+#ifdef ANSI_FILE
 	FILE * serialport;
+#else
+	int serialport;
+#endif
 }sat16ctrl_ctx;
