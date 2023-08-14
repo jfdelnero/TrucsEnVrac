@@ -265,7 +265,7 @@ void main(void)
 
 	Serial_Init();
 
-	printrom((const far rom char *)"\r\n1702A EPROM Reader V0.1\r\n");
+	printrom((const far rom char *)"\r\n1702A EPROM Reader V0.2\r\n");
 
 	while(1)
 	{

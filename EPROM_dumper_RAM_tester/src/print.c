@@ -175,7 +175,7 @@ void printdec(unsigned char c)
 	printchar('0'+c3);
 }
 
-void printbuf(unsigned char * buf,unsigned short  size)
+void printbuf(unsigned char * buf,unsigned char * comp,unsigned short  size)
 {
 	unsigned short  i;
 
@@ -188,12 +188,40 @@ void printbuf(unsigned char * buf,unsigned short  size)
 		{
 			printchar('\r');
 			printchar('\n');
+
+			if(comp)
+			{
+				if(buf[i] != comp[i])
+					printchar('>');
+				else
+					printchar(' ');
+			}
+			else
+			{
+				printchar(' ');
+			}
 		}
 		else
 		{
-			printchar(' ');
+			if(comp)
+			{
+				if(buf[i] != comp[i])
+				{
+					printchar('>');
+				}
+				else
+				{
+					printchar(' ');
+				}
+			}
+			else
+			{
+				printchar(' ');
+			}
 		}
+
 		printhex(buf[i]);
+
 	}
 
 	printchar('\r');

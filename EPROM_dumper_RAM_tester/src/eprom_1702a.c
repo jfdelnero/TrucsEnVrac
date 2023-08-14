@@ -39,12 +39,14 @@
 	unsigned char CRCPolyHi;
 #pragma udata
 
+unsigned char prev_ram_buffer[256];
 
 void eprom_1702a(void)
 {
 	unsigned short i;
 	unsigned short crc;
 	unsigned short checksum;
+	unsigned char  bits_changed,cur_byte,old_byte;
 
 	printrom((const far rom char *)"\r\n1702A EPROM Reader V0.1\r\n");
 
@@ -59,16 +61,31 @@ void eprom_1702a(void)
 
 		mswait(100, 1);
 
+		bits_changed = 0x00;
+		old_byte = 0x00;
+
 		for(i=0;i<256;i++)
 		{
 			PORTA = (i & 0x3F);
 			PORTE = (i>>6)&0xF;
 
-			CHIP_SELECTn = 0;
 			mswait(3, 1);
-			ram_buffer[i] = PORTD;
+			CHIP_SELECTn = 0;
+			mswait(5, 1);
+			prev_ram_buffer[i] = ram_buffer[i];
+			cur_byte = PORTD;
+			
+			ram_buffer[i] = cur_byte;
+			
+			if(i>0)
+			{
+				bits_changed |= ( cur_byte ^ old_byte );
+			}
+
+			old_byte = cur_byte;
+
 			CHIP_SELECTn = 1;
-			mswait(1, 1);
+			mswait(4, 1);
 		}
 
 		mswait(5, 1);
@@ -76,7 +93,7 @@ void eprom_1702a(void)
 		PORTA = 0x00;
 		PORTE = 0x00;
 
-		printbuf((unsigned char*)&ram_buffer,256);
+		printbuf((unsigned char*)&ram_buffer,(unsigned char*)&prev_ram_buffer,256);
 
 		checksum = 0;
 		for(i=0;i<256;i++)
@@ -101,6 +118,20 @@ void eprom_1702a(void)
 		printrom((const far rom char *)"CRC16 CCITT : 0x");
 		printhex(CRCHi);
 		printhex(CRCLo);
+		printrom((const far rom char *)"\r\n");
+
+		printrom((const far rom char *)"\r\nData bus bits changes: ");
+		for(i=0;i<8;i++)
+		{
+			if (bits_changed & (0x80>>i))
+			{
+				printchar('1');
+			}
+			else
+			{
+				printchar('0');
+			}
+		}
 		printrom((const far rom char *)"\r\n");
 
 		CHIP_SELECTn = 0;

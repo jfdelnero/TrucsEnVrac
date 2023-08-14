@@ -24,7 +24,7 @@ void printrom(const far rom char *pucBuffer);
 void printdec(unsigned char c);
 void printhex(unsigned char c);
 void printhex_long(unsigned long c);
-void printbuf(unsigned char * buf,unsigned short size);
+void printbuf(unsigned char * buf,unsigned char * comp,unsigned short  size);
 void printbuflong(unsigned long * buf,unsigned short  size);
 void printhex_short(unsigned short c);
 

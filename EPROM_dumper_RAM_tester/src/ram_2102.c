@@ -56,7 +56,7 @@ void ram_2102(void)
 			ram_buffer[i] = gen_rand();
 		}
 
-		printbuf((unsigned char*)&ram_buffer,128);
+		printbuf((unsigned char*)&ram_buffer,(unsigned char*)0,128);
 
 		printrom((const far rom char *)"\r\nWriting...\r\n");
 
