@@ -240,12 +240,55 @@ char * getfilenamebase(char * fullpath,char * filenamebase)
 	return 0;
 }
 
+char * strings_concat(char * dest, char * str1, char * str2)
+{
+	int len;
+	char * nstr;
+
+	nstr = dest;
+	len = 0;
+
+	if( dest )
+		len += strlen(dest);
+
+	if( str1 )
+		len += strlen(str1);
+
+	if( str2 )
+		len += strlen(str2);
+
+	if(len)
+	{
+		nstr = malloc(len + 1);
+		if(nstr)
+		{
+			memset(nstr,0,len + 1);
+
+			if( dest )
+			{
+				strcat(nstr,dest);
+				free(dest);
+			}
+
+			if( str1 )
+				strcat(nstr,str1);
+
+			if( str2 )
+				strcat(nstr,str2);
+		}
+	}
+
+	return nstr;
+}
+
 int main(int argc, char *argv[])
 {
+	char * lz4outputfilename;
+	char * syscmdline;
+	char * varname;
+
 	char outputfilename[512];
 	char inputfilename[512];
-	char syscmdline[1024];
-	char varname[1024];
 	char filenamebase[512];
 
 	int filesize,pack_filesize,src_filesize;
@@ -254,8 +297,12 @@ int main(int argc, char *argv[])
 	unsigned char *tst_buf;
 	int ret;
 
+	lz4outputfilename = NULL;
+	syscmdline = NULL;
+	src_buf = NULL;
+
 	printf("-------------------------------------------------------------------\n");
-	printf("--           LZ4 packed data header generator  v2.0              --\n");
+	printf("--           LZ4 packed data header generator  v2.1              --\n");
 	printf("--       (c) 2019-2023 Jean-François DEL NERO / HxC2001          --\n");
 	printf("-------------------------------------------------------------------\n");
 
@@ -273,25 +320,38 @@ int main(int argc, char *argv[])
 
 	/////////////////////////////////////////////////////////////////
 
-	remove("lz4_gen_out.lz4");
+	getfilenamebase(inputfilename,filenamebase);
+
+	lz4outputfilename = strings_concat(NULL, "lz4_gen_out_", filenamebase);
+	lz4outputfilename = strings_concat(lz4outputfilename, ".lz4", NULL);
+	if(!lz4outputfilename)
+		goto error;
+
+	remove(lz4outputfilename);
 
 	src_buf = load_bin(&src_filesize,inputfilename);
 	if(!src_buf)
 	{
 		printf("ERROR : Can't open %s !\n",inputfilename);
-		exit(-1);
+		goto error;
 	}
 
-	sprintf(syscmdline,"lz4 -9 -z -f %s lz4_gen_out.lz4",inputfilename);
+	syscmdline = strings_concat(NULL, "lz4 -9 -z -f ", inputfilename);
+	syscmdline = strings_concat(syscmdline, " ", lz4outputfilename);
+	if(!syscmdline)
+		goto error;
+
 	ret = system(syscmdline);
 	if(ret)
 	{
 		printf("ERROR : The command line \"%s\" returned %d. Is LZ4 installed ?\n",syscmdline,ret);
-		free(src_buf);
-		exit(-1);
+		goto error;
 	}
 
-	lz4_buf = load_bin(&filesize,"lz4_gen_out.lz4");
+	free(syscmdline);
+	syscmdline = NULL;
+
+	lz4_buf = load_bin(&filesize,lz4outputfilename);
 	if(lz4_buf)
 	{
 		uint32_t packed_size;
@@ -323,7 +383,12 @@ int main(int argc, char *argv[])
 
 		getfilenamebase(inputfilename,filenamebase);
 
-		sprintf(varname,"lz4_payload_%s",filenamebase);
+		varname = strings_concat(NULL, "lz4_payload_", filenamebase);
+		if(!varname)
+		{
+			free(lz4_buf);
+			goto error;
+		}
 
 		printf("Testing packed data...\n");
 
@@ -342,9 +407,11 @@ int main(int argc, char *argv[])
 					printf("Valid !\n");
 
 					write_c_file(lz4_buf, pack_filesize,outputfilename,varname,src_filesize);
+					ret = 0;
 				}
 				else
 				{
+					ret = -1;
 					printf("Bad compression !\n");
 					save_bin(tst_buf, src_filesize,"dbg_tst.bin");
 				}
@@ -352,21 +419,41 @@ int main(int argc, char *argv[])
 			free(tst_buf);
 		}
 
+		free(varname);
 		free(lz4_buf);
 	}
 	else
 	{
-		printf("ERROR : Can't open lz4_gen_out.lz4 !\n");
+		printf("ERROR : Can't open %s !\n",lz4outputfilename);
+		goto error;
 	}
+
+	if(syscmdline)
+		free(syscmdline);
+
+	if(lz4outputfilename)
+		free(lz4outputfilename);
 
 	if(src_buf)
 		free(src_buf);
 
-	return 0;
+	return ret;
 
 printsyntaxandexit:
 
 	printf("Syntax : %s -i:[infile.bin] -o:[outfile.h]\n",argv[0]);
 
 	return 0;
+
+error:
+	if(syscmdline)
+		free(syscmdline);
+
+	if(lz4outputfilename)
+		free(lz4outputfilename);
+
+	if(src_buf)
+		free(src_buf);
+
+	return -1;
 }

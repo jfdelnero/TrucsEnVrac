@@ -57,10 +57,13 @@ int unpack_lz4(void * pack_ptr, void * dest_ptr, uint32_t dest_max_size )
 	unpacked_size |= (uint32_t)(*((uint8_t*)(pack_ptr++)))<<16;
 	unpacked_size |= (uint32_t)(*((uint8_t*)(pack_ptr++)))<<24;
 
+	if(unpacked_size > dest_max_size)
+		return -2;
+
 	end_pack_ptr = pack_ptr + pack_size;
 
 	start_dest_ptr = dest_ptr;
-	end_dest_ptr = dest_ptr + dest_max_size;
+	end_dest_ptr = dest_ptr + unpacked_size;
 
 	do
 	{
@@ -92,7 +95,7 @@ int unpack_lz4(void * pack_ptr, void * dest_ptr, uint32_t dest_max_size )
 		}
 
 		// Match low byte.
-        match_offset = ( (uint16_t)(*((unsigned char*)pack_ptr)) | ( ((uint16_t)(*((unsigned char*)pack_ptr+1))<<8) ) );
+		match_offset = ( (uint16_t)(*((unsigned char*)pack_ptr)) | ( ((uint16_t)(*((unsigned char*)pack_ptr+1))<<8) ) );
 		match_ptr = dest_ptr - match_offset;
 		pack_ptr += 2;
 
