@@ -267,9 +267,9 @@ int main (int argc, char ** argv)
 	int  bin_seq_size;
 	int i;
 
-	printf("bin_search v1.0. -help format command line syntax.");
+	printf("bin_search v1.0. -help format command line syntax.\n");
 
-	if(isOption(argc, argv,"-help",NULL, NULL) )
+	if(isOption(argc, argv,"help",NULL, NULL) )
 	{
 		printf("Syntax:\n");
 		printf("%s -binseq:0123456789ABCDEF [files]\n",argv[0]);
