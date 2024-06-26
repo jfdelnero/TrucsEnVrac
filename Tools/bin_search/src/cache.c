@@ -13,7 +13,7 @@
 
 #include "cache.h"
 
-int open_file(file_cache * fc, char* path, int filesize,unsigned char fill)
+int open_file(file_cache * fc, char* path, fsize_t filesize,unsigned char fill)
 {
 	memset(fc,0,sizeof(file_cache));
 
@@ -118,7 +118,7 @@ error:
 	return -1;
 }
 
-unsigned char get_byte(file_cache * fc,int offset, int * success)
+unsigned char get_byte(file_cache * fc, foffset_t offset, int * success)
 {
 	unsigned char byte;
 	int ret;
@@ -160,7 +160,7 @@ unsigned char get_byte(file_cache * fc,int offset, int * success)
 	return byte;
 }
 
-int set_byte(file_cache * fc,unsigned int offset, unsigned char byte)
+int set_byte(file_cache * fc, foffset_t offset, unsigned char byte)
 {
 	if(fc)
 	{
@@ -213,57 +213,57 @@ error:
 }
 
 
-int16_t get_short(file_cache * fc,int offset, int * success)
+int16_t get_short(file_cache * fc, foffset_t offset, int * success)
 {
 	uint16_t val;
 
 	val = 0;
 
 	val = get_byte(fc, offset++, success);
-	val |= (((unsigned short)get_byte(fc, offset, success))<<8);
+	val |= (((uint16_t)get_byte(fc, offset, success))<<8);
 
 	return (int16_t)(val);
 }
 
-int set_ushort(file_cache * fc,unsigned int offset, uint16_t data)
+int set_ushort(file_cache * fc, foffset_t offset, uint16_t data)
 {
 	set_byte(fc,offset, data & 0xFF);
 	return set_byte(fc,offset+1, (data>>8) & 0xFF);
 }
 
-int set_ulong(file_cache * fc,unsigned int offset, uint32_t data)
+int set_ulong(file_cache * fc, foffset_t offset, uint32_t data)
 {
 	set_ushort(fc,offset, data & 0xFFFF);
 	return set_ushort(fc,offset+2, (data>>16) & 0xFFFF);
 }
 
-uint16_t get_ushort(file_cache * fc,int offset, int * success)
+uint16_t get_ushort(file_cache * fc, foffset_t offset, int * success)
 {
 	uint16_t val;
 
 	val = 0;
 
 	val = get_byte(fc, offset++, success);
-	val |= (((unsigned short)get_byte(fc, offset, success))<<8);
+	val |= (((uint16_t)get_byte(fc, offset, success))<<8);
 
 	return val;
 }
 
-uint32_t get_ulong(file_cache * fc,int offset, int * success)
+uint32_t get_ulong(file_cache * fc, foffset_t offset, int * success)
 {
 	uint32_t val;
 
 	val = 0;
 
 	val = get_byte(fc, offset++, success);
-	val |= (((unsigned short)get_byte(fc, offset++, success))<<8);
-	val |= (((unsigned short)get_byte(fc, offset++, success))<<16);
-	val |= (((unsigned short)get_byte(fc, offset++, success))<<24);
+	val |= (((uint16_t)get_byte(fc, offset++, success))<<8);
+	val |= (((uint16_t)get_byte(fc, offset++, success))<<16);
+	val |= (((uint16_t)get_byte(fc, offset++, success))<<24);
 
 	return val;
 }
 
-int32_t get_long(file_cache * fc,int offset, int * success)
+int32_t get_long(file_cache * fc, foffset_t offset, int * success)
 {
 	uint32_t val;
 
@@ -272,7 +272,7 @@ int32_t get_long(file_cache * fc,int offset, int * success)
 	return (int32_t)(val);
 }
 
-float get_float( file_cache * fc,int offset, int * success)
+float get_float( file_cache * fc,foffset_t offset, int * success)
 {
 	uint32_t val;
 	float fval;
@@ -283,9 +283,9 @@ float get_float( file_cache * fc,int offset, int * success)
 	return fval;
 }
 
-double get_double( file_cache * fc,int offset, int * success)
+double get_double( file_cache * fc, foffset_t offset, int * success)
 {
-	int i;
+	foffset_t i;
 	uint8_t val[8];
 	double dval;
 

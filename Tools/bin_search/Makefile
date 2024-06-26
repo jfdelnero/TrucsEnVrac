@@ -1,5 +1,5 @@
 
-override CFLAGS += -Wall -O3
+override CFLAGS += -Wall -O3 -D_OFFSET_64BITS_SUPPORT
 
 sources := $(wildcard src/*.c)
 objects := $(sources:src/%.c=obj/%.o)

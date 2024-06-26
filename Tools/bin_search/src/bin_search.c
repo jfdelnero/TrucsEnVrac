@@ -161,8 +161,8 @@ int binseqsearch(char * file, char * seqfile, unsigned char * binseq, int binseq
 	file_cache bin_file;
 	file_cache seq_file;
 	int success;
-	int bin_i,seq_i,i;
-	int lastvalid;
+	foffset_t bin_i,seq_i,i;
+	foffset_t lastvalid;
 	int cnt;
 	unsigned char seqbyte;
 	unsigned char prtbuf[128];
@@ -223,7 +223,7 @@ int binseqsearch(char * file, char * seqfile, unsigned char * binseq, int binseq
 				// Found !
 				seq_i = 0;
 
-				printf("%s: Offset 0x%X\n", file, lastvalid);
+				printf("%s: Offset 0x%lX\n", file, lastvalid);
 
 				for(i=0;i<sizeof(prtbuf);i++)
 				{
@@ -266,8 +266,16 @@ int main (int argc, char ** argv)
 	unsigned char bin_seq[4096];
 	int  bin_seq_size;
 	int i;
+	int quiet;
 
-	printf("bin_search v1.0. -help format command line syntax.\n");
+	quiet = 0;
+	if(isOption(argc, argv,"quiet",NULL, NULL) )
+	{
+		quiet = 1;
+	}
+
+	if(!quiet)
+		printf("bin_search v1.0. -help format command line syntax.\n");
 
 	if(isOption(argc, argv,"help",NULL, NULL) )
 	{
@@ -275,6 +283,7 @@ int main (int argc, char ** argv)
 		printf("%s -binseq:0123456789ABCDEF [files]\n",argv[0]);
 		printf("%s -strseq:\"ascii string\" [files]\n",argv[0]);
 		printf("%s -fileseq:file_path [files]\n",argv[0]);
+		printf("%s -quiet\n",argv[0]);
 
 		exit(0);
 	}
@@ -287,12 +296,15 @@ int main (int argc, char ** argv)
 	{
 		bin_seq_size = strbin2bin(bin_seq_str, bin_seq, sizeof(bin_seq));
 
-		printf("Binary seq to search (%d bytes) : ", bin_seq_size);
-		for(i=0;i<bin_seq_size;i++)
+		if(!quiet)
 		{
-			printf("%.2X ",bin_seq[i]);
+			printf("Binary seq to search (%d bytes) : ", bin_seq_size);
+			for(i=0;i<bin_seq_size;i++)
+			{
+				printf("%.2X ",bin_seq[i]);
+			}
+			printf("\n");
 		}
-		printf("\n");
 	}
 
 	if(isOption(argc, argv,"strseq",(char*)&bin_seq_str, NULL) )
@@ -306,19 +318,25 @@ int main (int argc, char ** argv)
 			bin_seq_size++;
 		}
 
-		printf("str seq to search (%d bytes) : ", bin_seq_size);
-
-		for(i=0;i<bin_seq_size;i++)
+		if(!quiet)
 		{
-			printf("%.2X ",bin_seq[i]);
-		}
+			printf("str seq to search (%d bytes) : ", bin_seq_size);
 
-		 printf("\n");
+			for(i=0;i<bin_seq_size;i++)
+			{
+				printf("%.2X ",bin_seq[i]);
+			}
+
+			printf("\n");
+		}
 	}
 
 	if(isOption(argc, argv,"fileseq",(char*)&seq_file_path, NULL) )
 	{
-		printf("file seq to search : %s\n", seq_file_path);
+		if(!quiet)
+		{
+			printf("file seq to search : %s\n", seq_file_path);
+		}
 		seq_file_path_ptr = seq_file_path;
 	}
 
