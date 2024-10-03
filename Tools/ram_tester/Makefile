@@ -6,7 +6,7 @@ objects := $(sources:src/%.c=obj/%.o)
 
 all: output_dir ram_tester
 
-ram_tester:  $(objects) 
+ram_tester:  $(objects)
 	${CC} -o $@    $^ $(LDFLAGS)
 
 $(objects): obj/%.o: src/%.c

@@ -11,6 +11,14 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifndef WIN32
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <unistd.h>
+#endif
+
+#include "mmap.h"
+
 #define MIN_PAGE_SIZE (1024*1024)
 
 //#define _32BITS_TARGET_ 1
@@ -24,6 +32,7 @@ typedef uint32_t WORD;
 #define WORDDECPRINT "%d"
 #define RANDSEED 0xAF5469CD
 #define BANNERTARGETMODE "(32 Bits mode)"
+#define STRTOVALUE strtoul
 
 // xorshift 32
 static inline uint32_t xorshift_rand( uint32_t seed )
@@ -45,6 +54,7 @@ typedef uint64_t WORD;
 #define WORDDECPRINT "%ld"
 #define RANDSEED 0xAF5469CD67582A93
 #define BANNERTARGETMODE "(64 Bits mode)"
+#define STRTOVALUE strtoull
 
 // xorshift 64
 static inline uint64_t xorshift_rand( uint64_t seed )
@@ -123,17 +133,58 @@ int isOption(int argc, char* argv[],char * paramtosearch,char * argtoparam)
 	return 0;
 }
 
+static size_t str_to_int(char * str)
+{
+	size_t value;
+
+	value = 0;
+
+	if(str)
+	{
+		if( strlen(str) > 2 )
+		{
+			if( str[0]=='0' && ( str[1]=='x' || str[1]=='X' ) )
+			{
+				value = (size_t)STRTOVALUE(str, NULL, 0);
+			}
+			else
+			{
+				if(str[0]=='\'' && str[2]=='\'')
+				{
+					value = str[1];
+				}
+				else
+				{
+					value = atoi(str);
+				}
+			}
+		}
+		else
+		{
+			value = atoi(str);
+		}
+	}
+
+	return value;
+}
+
 int main (int argc, char ** argv)
 {
 	char tmp_str[512];
 
-	WORD * src_ptr;
-	WORD * ptr,rnd,rd;
+	volatile WORD * src_ptr;
+	volatile WORD * ptr;
+	WORD rnd,rd;
 	WORD page_size,word_page_size,max_loop;
 	WORD i,j,ecnt;
 
+	int phy_mode;
+	off_t physical_address;
+	hw_mem_map_stat phy_state;
+
 	page_size = MIN_PAGE_SIZE;
 	max_loop = 0;
+	phy_mode = 0;
 
 	printf("Ram tester v1.0 "BANNERTARGETMODE"\n");
 	printf("(c) 2023 Jean-François DEL NERO\n");
@@ -148,12 +199,40 @@ int main (int argc, char ** argv)
 		max_loop = (WORD)atoi(tmp_str);
 	}
 
+	if( isOption( argc, argv,"phy",(char*)&tmp_str) == 1 )
+	{
+		phy_mode = 1;
+		physical_address = (WORD)str_to_int(tmp_str);
+
+		if( isOption( argc, argv,"phy_size",(char*)&tmp_str) == 1 )
+		{
+			page_size = (WORD)str_to_int(tmp_str);
+		}
+	}
+
 	word_page_size = page_size/sizeof(WORD);
 
 	if(page_size && word_page_size && max_loop)
 	{
 		ecnt = 0;
-		src_ptr = malloc(page_size);
+		if( phy_mode )
+		{
+			phy_state.mem_size = page_size;
+			phy_state.mem_base = physical_address;
+			if( hw_mem_map(&phy_state) > 0 )
+			{
+				src_ptr = (volatile WORD *)phy_state.memptr;
+			}
+			else
+			{
+				src_ptr = NULL;
+			}
+		}
+		else
+		{
+			src_ptr = malloc(page_size);
+		}
+
 		if(src_ptr)
 		{
 			printf("Starting ram_tester... (Page size : "WORDDECPRINT" MiB, Loop(s) : "WORDDECPRINT")\n",page_size/(MIN_PAGE_SIZE),max_loop);
@@ -190,7 +269,10 @@ int main (int argc, char ** argv)
 
 			printf("Test done !\nTotal error(s) count : "WORDDECPRINT"\n",ecnt);
 
-			free(src_ptr);
+			if( phy_mode )
+				hw_mem_unmap(&phy_state);
+			else
+				free((WORD*)src_ptr);
 
 			if(!ecnt)
 				exit(1);
@@ -206,7 +288,7 @@ int main (int argc, char ** argv)
 	}
 	else
 	{
-		printf("Syntax : %s -page_size:[Test page size (MiB)] -max_loop:[Test loop(s) count]\n",argv[0]);
+		printf("Syntax : %s -page_size:[Test page size (MiB)] -max_loop:[Test loop(s) count] -phy:[Physical address] -phy_size:[Physical test page size (B)]\n",argv[0]);
 	}
 
 	exit(0);
