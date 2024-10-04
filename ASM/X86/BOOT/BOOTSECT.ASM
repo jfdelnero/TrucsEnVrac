@@ -80,6 +80,10 @@ boot_sector_code:
 	mov ax, cs                             ; es = ds = cs = 0x0000
 	mov ds, ax
 	mov es, ax
+
+	; Save DL Register - It contains the boot drive id
+	mov ds:[drive_id], dl
+
 	mov di, RELOC_BASE_OFFSET              ; Destination
 	mov si, BIOS_LOAD_OFFSET               ; Source
 	mov cx, SECTOR_SIZE                    ; Size
@@ -103,6 +107,7 @@ retry:
 	; Reset floppy drive
 	xor ah,ah
 	xor dh,dh
+	mov dl,ds:[drive_id]
 	int 13h
 	jc  retry_loop
 
@@ -110,7 +115,8 @@ retry:
 	; Destination buffer
 	mov bx,LOAD_BASE_OFFSET
 
-	xor dx,dx                              ; Head 0 (dh), drive A: (dl)
+	xor dh,dh                              ; Head 0 (dh)
+	mov dl,ds:[drive_id]                   ; Drive id (dl)
 	xor ch,ch                              ; Start at track 0
 	mov cl,2                               ; Sector 2
 	mov al,[cs:RELOC_BASE_OFFSET+0x18]     ; SECTOR_PER_TRACK sectors to read for the first track
@@ -195,6 +201,7 @@ end_print_string_func:
 msg_start          db "HxC2001 Boot sector started ! :) Loading : ",0
 msg_error          db "Boot error ! :(",13,10,0
 msg_second_stage   db 13,10,"Second stage Loaded :) -> Jump !",13,10,0
+drive_id           db 0
 ;------------------------------------------------------------------------------
 ;   sector padding + bootable sector magic number
 	times   (SECTOR_SIZE-2)-($-$$)      db      0
