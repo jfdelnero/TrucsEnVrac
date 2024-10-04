@@ -168,15 +168,57 @@ static size_t str_to_int(char * str)
 	return value;
 }
 
+int page_mem_test(volatile void * dst, size_t size, int loop)
+{
+	volatile WORD * ptr;
+	WORD rnd,rd;
+	WORD i,ecnt;
+	size_t j;
+
+	ecnt = 0;
+
+	size = size / sizeof(WORD);
+
+	for(i=0;i<loop;i++)
+	{
+		printf("Loop n°"WORDDECPRINT" (Total error(s) count : "WORDDECPRINT")...\n",i,ecnt);
+
+		// Fill the page...
+		ptr = (volatile WORD *)dst;
+		rnd = RANDSEED + i;
+
+		for(j=0;j<size;j++)
+		{
+			rnd = xorshift_rand(rnd);
+			*ptr++ = rnd;
+		}
+
+		// Check the page...
+		ptr = (volatile WORD *)dst;
+		rnd = RANDSEED + i;
+
+		for(j=0;j<size;j++)
+		{
+			rnd = xorshift_rand(rnd);
+			rd = *ptr++;
+			if( rd != rnd )
+			{
+				ecnt++;
+				printf("Memory error n°"WORDDECPRINT" ! (At Word 0x%"WORDHEXPRINT" = Read: 0x%"WORDHEXPRINT", Should Be: 0x%"WORDHEXPRINT", Error Mask: 0x%"WORDHEXPRINT")\n",ecnt,j,rd, rnd, rd ^ rnd);
+			}
+		}
+	}
+
+	return ecnt;
+}
+
 int main (int argc, char ** argv)
 {
 	char tmp_str[512];
 
 	volatile WORD * src_ptr;
-	volatile WORD * ptr;
-	WORD rnd,rd;
 	WORD page_size,word_page_size,max_loop;
-	WORD i,j,ecnt;
+	WORD ecnt;
 
 	int phy_mode;
 	off_t physical_address;
@@ -186,8 +228,8 @@ int main (int argc, char ** argv)
 	max_loop = 0;
 	phy_mode = 0;
 
-	printf("Ram tester v1.0 "BANNERTARGETMODE"\n");
-	printf("(c) 2023 Jean-François DEL NERO\n");
+	printf("Ram tester v1.1 "BANNERTARGETMODE"\n");
+	printf("(c) 2023-2024 Jean-François DEL NERO\n");
 
 	if( isOption( argc, argv,"page_size",(char*)&tmp_str) == 1 )
 	{
@@ -235,44 +277,24 @@ int main (int argc, char ** argv)
 
 		if(src_ptr)
 		{
-			printf("Starting ram_tester... (Page size : "WORDDECPRINT" MiB, Loop(s) : "WORDDECPRINT")\n",page_size/(MIN_PAGE_SIZE),max_loop);
-
-			for(i=0;i<max_loop;i++)
+			if( phy_mode )
 			{
-				printf("Loop n°"WORDDECPRINT" (Total error(s) count : "WORDDECPRINT")...\n",i,ecnt);
+				printf("Starting ram_tester... (Page size : "WORDDECPRINT" B, Loop(s) : "WORDDECPRINT")\n",page_size,max_loop);
 
-				// Fill the page...
-				ptr = src_ptr;
-				rnd = RANDSEED + i;
+				ecnt = page_mem_test((volatile void *)src_ptr, page_size, max_loop);
 
-				for(j=0;j<word_page_size;j++)
-				{
-					rnd = xorshift_rand(rnd);
-					*ptr++ = rnd;
-				}
+				hw_mem_unmap(&phy_state);
+			}
+			else
+			{
+				printf("Starting ram_tester... (Page size : "WORDDECPRINT" MiB, Loop(s) : "WORDDECPRINT")\n",page_size/(MIN_PAGE_SIZE),max_loop);
 
-				// Check the page...
-				ptr = src_ptr;
-				rnd = RANDSEED + i;
+				ecnt = page_mem_test((volatile void *)src_ptr, page_size, max_loop);
 
-				for(j=0;j<word_page_size;j++)
-				{
-					rnd = xorshift_rand(rnd);
-					rd = *ptr++;
-					if( rd != rnd )
-					{
-						ecnt++;
-						printf("Memory error n°"WORDDECPRINT" ! (At Word 0x%"WORDHEXPRINT" = Read: 0x%"WORDHEXPRINT", Should Be: 0x%"WORDHEXPRINT", Error Mask: 0x%"WORDHEXPRINT")\n",ecnt,j,rd, rnd, rd ^ rnd);
-					}
-				}
+				free((WORD*)src_ptr);
 			}
 
-			printf("Test done !\nTotal error(s) count : "WORDDECPRINT"\n",ecnt);
-
-			if( phy_mode )
-				hw_mem_unmap(&phy_state);
-			else
-				free((WORD*)src_ptr);
+			printf("Test(s) done !\nTotal error(s) count : "WORDDECPRINT"\n",ecnt);
 
 			if(!ecnt)
 				exit(1);
