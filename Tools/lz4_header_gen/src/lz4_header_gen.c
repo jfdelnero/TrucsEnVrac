@@ -115,6 +115,8 @@ unsigned char* load_bin(int * size,char * filename)
 		fseek( fi, 0, SEEK_SET );
 
 		mem_buf = malloc(filesize);
+		if( !mem_buf )
+			goto error;
 
 		if( !fread(mem_buf,filesize,1,fi) )
 		{
@@ -138,8 +140,8 @@ unsigned char* load_bin(int * size,char * filename)
 error:
 	printf("load_bin: error !\n");
 
-	if(mem_buf)
-		free(mem_buf);
+	free(mem_buf);
+
 	if(fi)
 		fclose(fi);
 
