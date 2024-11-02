@@ -63,7 +63,7 @@ retry_loop:
 	jnz short retry
 
 	mov  si, (RELOC_BASE_OFFSET + (msg_error - BIOS_LOAD_OFFSET))
-	call print_string_func
+	call puts_bios
 
 	; Stop -> "sleep mode"
 looperror:
@@ -97,11 +97,11 @@ boot_sector_code:
 ;------------------------------------------------------------------------------
 
 relocated_code_entry:
-    ; We are now located in the 0x0000:0x0600 memory block !
+	; We are now located in the 0x0000:0x0600 memory block !
 
 	; Print the startup message
 	mov  si, RELOC_BASE_OFFSET + (msg_start - BIOS_LOAD_OFFSET)
-	call print_string_func
+	call puts_bios
 
 retry:
 	; Reset floppy drive
@@ -140,7 +140,7 @@ load_loop:
 same_track:
 
 	mov al,'.'
-	call print_char_func
+	call putc_bios
 
 	mov al,[cs:RELOC_BASE_OFFSET+0x18]     ; SECTOR_PER_TRACK sectors to read
 
@@ -151,10 +151,10 @@ same_track:
 load_done:
 
 	mov al,'.'
-	call print_char_func
+	call putc_bios
 
 	mov si, RELOC_BASE_OFFSET + (msg_second_stage - BIOS_LOAD_OFFSET)
-	call print_string_func
+	call puts_bios
 
 	; And finally jump to the loaded code...
 	jmp 0x0000:LOAD_BASE_OFFSET
@@ -163,40 +163,9 @@ load_done:
 ;------------------------------------------------------------------------------
 ;------------------------------------------------------------------------------
 
-;------------------------------------------------------------------------------
-; print char function
-print_char_func:
-	push ax
-	push bx
+	%include 'PUTC_BIOS.INC'
+	%include 'PUTS_BIOS.INC'
 
-	mov ah,0x0E                            ; Teletype output
-	mov bh,0x00                            ; Page Number
-	mov bl,0x07                            ; Color (only in graphic mode)
-
-	int  0x10                              ; BIOS Videos services.
-
-	pop bx
-	pop ax
-
-	ret
-
-;------------------------------------------------------------------------------
-; print string function
-print_string_func:
-
-	mov al,[cs:si]
-	or  al,al
-	jz  end_print_string_func
-
-	call print_char_func
-
-	add si,1
-
-	jmp print_string_func
-
-end_print_string_func:
-
-	ret
 ;------------------------------------------------------------------------------
 msg_start          db "HxC2001 Boot sector started ! :) Loading : ",0
 msg_error          db "Boot error ! :(",13,10,0

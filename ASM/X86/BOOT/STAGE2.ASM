@@ -7,9 +7,6 @@
 ; nasm STAGE2.ASM -o STAGE2.BIN
 ; -----------------------------------------------------------------------------
 
-	%define START_MEMORY_TEST   64*1024*1024
-	%define MEMORY_TEST_SIZE    63*1024*1024
-
 	[bits  16]
 
 	org 0x800
@@ -22,112 +19,25 @@
 second_loader:
 	; Here we are in real mode.
 	mov     si, msg_second_stage_hello
-	call    print_string_func
+	call    puts_bios
 
 	call detect_cpu
 
+	; Running on a 386 or up ?
+	cmp byte cs:[cpu_type], 3
 	; Switch to a Flat / protected mode
-	jmp switch_to_linear_mode
+	jae switch_to_linear_mode
 
-;------------------------------------------------------------------------------
-; print char function
-print_char_func:
-	push ax
-	push bx
+	mov     si, msg_second_stage_386
+	call  	puts_bios
 
-	mov ah,0x0E                 ; Teletype output
-	mov bh,0x00                 ; Page Number
-	mov bl,0x07                 ; Color (only in graphic mode)
+.haltloop:
+	hlt
+	jmp .haltloop
 
-	int  0x10                   ; BIOS Videos services.
-
-	pop bx
-	pop ax
-
-	ret
-
-;------------------------------------------------------------------------------
-; print string function
-print_string_func:
-
-	mov al,[cs:si]
-	or  al,al
-	jz  end_print_string_func
-
-	call print_char_func
-
-	add si,1
-
-	jmp print_string_func
-
-end_print_string_func:
-
-	ret
-
-detect_cpu:
-
-	pushf                          ; push original FLAGS
-	pop     ax                     ; get original FLAGS
-	mov     cx, ax                 ; save original FLAGS
-	and     ax, 0xfff              ; clear bits 12-15 in FLAGS
-	push    ax                     ; save new FLAGS value on stack
-	popf                           ; replace current FLAGS value
-	pushf                          ; get new FLAGS
-	pop     ax                     ; store new FLAGS in AX
-	and     ax, 0xf000             ; if bits 12-15 are set, then
-	cmp     ax, 0xf000             ;   processor is an 8086/8088
-	mov     byte [cs:cpu_type], 0  ; turn on 8086/8088 flag
-	je      end_cpu_type           ; jump if processor is 8086/8088
-
-	or      cx, 0xf000             ; try to set bits 12-15
-	push    cx                     ; save new FLAGS value on stack
-	popf                           ; replace current FLAGS value
-	pushf                          ; get new FLAGS
-	pop     ax                     ; store new FLAGS in AX
-	and     ax, 0xf000             ; if bits 12-15 are clear
-	mov     byte [cs:cpu_type], 2  ; processor=80286, turn on 80286 flag
-	jz      end_cpu_type           ; if no bits set, processor is 80286
-
-	pushfd                         ; push original EFLAGS
-	pop     eax                    ; get original EFLAGS
-	mov     ecx, eax               ; save original EFLAGS
-	xor     eax, 0x40000           ; flip AC bit in EFLAGS
-	push    eax                    ; save new EFLAGS value on stack
-	popfd                          ; replace current EFLAGS value
-
-	pushfd                         ; get new EFLAGS
-	pop     eax                    ; store new EFLAGS in EAX
-	xor     eax, ecx               ; can't toggle AC bit, processor=80386
-	mov     byte [cs:cpu_type], 3  ; turn on 80386 processor flag
-	jz      end_cpu_type           ; jump if 80386 processor
-	push    ecx
-	popfd                          ; restore AC bit in EFLAGS first
-
-	mov     byte [cs:cpu_type], 4  ; turn on 80486 processor flag
-	mov     eax, ecx               ; get original EFLAGS
-	xor     eax, 200000h           ; flip ID bit in EFLAGS
-	push    eax                    ; save new EFLAGS value on stack
-	popfd                          ; replace current EFLAGS value
-	pushfd                         ; get new EFLAGS
-	pop     eax                    ; store new EFLAGS in EAX
-	xor     eax, ecx               ; can't toggle ID bit,
-	je      end_cpu_type           ; processor=80486
-
-	;Here CPUID is supported !
-	mov     byte [cs:cpu_type], 5  ; Pentium or any other CPUID compatible CPU
-
-	mov     eax,0
-	cpuid
-	mov dword [cs:cpuid_manufacturer], ebx
-	mov dword [cs:cpuid_manufacturer+4], edx
-	mov dword [cs:cpuid_manufacturer+8], ecx
-
-	mov     eax,1
-	cpuid
-	mov dword [cs:cpuid_id], eax
-
-end_cpu_type:
-	ret
+	%include 'PUTC_BIOS.INC'
+	%include 'PUTS_BIOS.INC'
+	%include 'CPU_ID.INC'
 
 align 8
 
@@ -229,428 +139,94 @@ code_32bit_mode:
 
 	; At this point the memory
 
-	call clear_screen
+	call clear_screen_386
+
+	call init_timer
 
 	mov esi, msg_second_stage_flat
-	call write_string
+	call puts_386
+
+;--------------------------------------
+; Print CPU type
+;--------------------------------------
+	xor eax,eax
+	mov al,[cs:cpu_type]
+
+	cmp al, 5
+	jae .print_cpuid
+
+	mov esi, msg_cpu
+	call puts_386
+
+	shl eax,2
+	mov esi, cpu_str_list
+	add esi,eax
+	mov esi,[cs:esi]
+	call puts_386
+
+	jmp  .print_cputype_done
+
+.print_cpuid:
 
 	mov esi, msg_cpuvendor
-	call write_string
+	call puts_386
 
-	mov esi,msg_cpu8086
-	mov al,[cs:cpu_type]
-	cmp al,0
-	je  print_cputype
-
-	mov esi,msg_cpu80286
-	mov al,[cs:cpu_type]
-	cmp al,2
-	je  print_cputype
-
-	mov esi,msg_cpu80386
-	mov al,[cs:cpu_type]
-	cmp al,3
-	je  print_cputype
-
-	mov esi,msg_cpu80486
-	mov al,[cs:cpu_type]
-	cmp al,4
-	je  print_cputype
+	mov esi, cpuid_manufacturer
+	call puts_386
 
 	mov esi,msg_cpuid
-	call write_string
+	call puts_386
+
 	mov eax, [cs:cpuid_id]
-	call print_hex_long
+	call prt_hex_long_386
+
 	mov esi,msg_return
+	call puts_386
 
-print_cputype:
-	call write_string
+.print_cputype_done:
+;-------------------------------------------------------------------
 
-	mov edi,START_MEMORY_TEST
-	mov ebx,0
-	mov edx,0x32340C
-	CLD
-loop_0001:
+	;%include 'PRG.INC'
 
-	mov eax,ebx
-	mov dword [ds:char_x_pos],0
-	mov dword [ds:char_y_pos],5
-	call print_hex_long
+	mov esi,msg_second_stage_halted
+	call puts_386
 
-	mov eax,0x0000FFFF
-	mov dword [ds:char_x_pos],0
-	mov dword [ds:char_y_pos],4
-	call print_hex_long
-
-	mov edi,START_MEMORY_TEST
-	mov ecx,(MEMORY_TEST_SIZE)/4
-	rep stosd
-
-	;mov eax,edx
-	;call random_mem
-	;mov edx,eax
-
-	mov eax,0x00000000
-	mov dword [ds:char_x_pos],0
-	mov dword [ds:char_y_pos],4
-	call print_hex_long
-
-	mov edi,START_MEMORY_TEST
-	mov ecx,(MEMORY_TEST_SIZE)/4
-	rep stosd
-
-	;mov eax,edx
-	;call random_mem
-	;mov edx,eax
-
-	dec ebx
-	cmp ebx,0
-	jmp loop_0001
-
+.loop_halt_cpu:
 	hlt
-
-	call random_mem
-
-	mov esi, 2*1024*1024
-
-loop_copy:
-	call copy_video_memory
-	call random_mem
-
-	add esi,320
-
-	cmp esi,(4*1024*1024) - 64000
-	jna loop_copy
-
-	mov esi, 2*1024*1024
-
-	jmp loop_copy
-
-	hlt
-
-mainloopscreen:
-
-	mov eax,0xA0000
-	mov edi,eax
-	mov esi,0
-
-loopscreen:
-
-	mov ebx,ecx
-	shl eax,13
-	xor eax,ebx
-
-	mov ebx,eax
-	shr eax,17
-	xor eax,ebx
-
-	mov ebx,eax
-	shl eax,5
-	xor eax,ebx
-
-	inc ecx
-
-	mov [es:edi],eax
-
-	add edi,4
-	cmp edi,(0xA0000+64000)
-	jne loopscreen
-
-jmp mainloopscreen
-
-	;hlt
-	jmp $
-
-	ret
-
-char_x_pos dd 0
-char_y_pos dd 0
-
-; al = char,
-write_char:
-	push edi
-	push edx
-
-	mov edi, 0xB8000
-
-	cmp al, 0x0D ; \r
-	jne .l01
-	mov dword [ds:char_x_pos],0
-	jmp .l03
-.l01:
-
-	cmp al, 0x0A ; \n
-	jne .l02
-	inc dword [ds:char_y_pos]
-	jmp .l03
-.l02:
-
-	cmp dword [ds:char_y_pos],25
-	jae .l03
-
-	push eax
-
-	mov eax,(80*2)
-	mul dword [ds:char_y_pos]
-	mov edx,[ds:char_x_pos]
-	shl edx,1
-	add eax,edx
-	add edi,eax
-
-	pop eax
-
-	mov byte [ds:edi],al
-
-	inc dword [ds:char_x_pos]
-	cmp dword [ds:char_x_pos],80
-	jnae .l03
-	mov dword [ds:char_x_pos],0
-	inc dword [ds:char_y_pos]
-.l03:
-
-	pop edx
-	pop edi
-
-	ret
-
-write_string:
-	push esi
-	push eax
-.l01:
-	mov al,[ds:esi]
-	cmp al,0
-	je .l02
-	call write_char
-	inc esi
-	jmp .l01
-.l02:
-	pop eax
-	pop esi
-	ret
-
-clear_screen:
-	mov dword [ds:char_x_pos],0
-	mov dword [ds:char_y_pos],0
-
-	mov ecx,80*25
-	mov  al,' '
-.l01:
-	call write_char
-	dec ecx
-	jnz .l01
-
-	mov dword [ds:char_x_pos],0
-	mov dword [ds:char_y_pos],0
-
-	ret
-
-
-print_hex_quartet:
-
-	push ax
-
-	and al,0x0F
-
-	cmp al,0xA
-	jnae .l01
-
-	sub al,0xA
-
-	add al,'A'
-	call write_char
-
-	pop ax
-
-	ret
-
-.l01:
-	add al,'0'
-	call write_char
-
-	pop  ax
-
-	ret
-
-print_hex_byte:
-
-	push ax
-	shr al,4
-	call print_hex_quartet
-	pop ax
-	call print_hex_quartet
-
-	ret
-
-print_hex_long:
-	push eax
-	push eax
-	push eax
-
-	shr  eax,24
-	call print_hex_byte
-
-	pop eax
-	shr  eax,16
-	call print_hex_byte
-
-	pop eax
-	shr  eax,8
-	call print_hex_byte
-
-	pop eax
-	call print_hex_byte
-	ret
-
-set_color:
-	push edx
-	push eax
-
-	push eax
-	mov dx,0x3C6
-	mov al,0xFF
-	out dx,al
-	pop eax
-
-	mov dx,0x3C8
-	out dx,al
-
-	shr eax,8
-	mov dx,0x3C9
-	out dx,al
-
-	shr eax,8
-	mov dx,0x3C9
-	out dx,al
-
-	shr eax,8
-	mov dx,0x3C9
-	out dx,al
-
-	pop eax
-	pop edx
-
-	ret
-
-init_pal:
-	push eax
-
-	mov eax,0x00000000
-set_col_loop:
-	call set_color
-	add eax,0x01030701
-
-	cmp al,0
-	jne set_col_loop
-
-	pop eax
-
-	ret
-
-fill_video_memory:
-
-	push eax
-	push edi
-
-	mov edi,0xA0000
-
-loop_fill_screen:
-
-	mov [es:edi],ebx
-	add edi,4
-	mov [es:edi],ebx
-	add edi,4
-	mov [es:edi],ebx
-	add edi,4
-	mov [es:edi],ebx
-	add edi,4
-
-	cmp edi,(0xA0000+64000)
-	jne loop_fill_screen
-
-	pop edi
-	pop eax
-
-	ret
-
-fill_memory:
-
-	push eax
-	push edi
-	push ecx
-
-	mov     eax,ebx
-	rep stosd
-
-	pop ecx
-	pop edi
-	pop eax
-
-	ret
-
-
-copy_video_memory: ; esi : src
-
-	push ebx
-	push edi
-	push esi
-
-	mov edi,0xA0000
-
-loop_copy_video_memory:
-	mov ebx,[es:esi]
-	mov [es:edi],ebx
-	add esi,4
-	add edi,4
-
-	cmp edi,(0xA0000+64000)
-	jne loop_copy_video_memory
-
-	pop esi
-	pop edi
-	pop ebx
-
-	ret
-
-random_mem:
-	push edi
-	push ebx
-
-	mov edi,START_MEMORY_TEST
-
-main_loop_random_mem:
-
-	mov ebx,eax
-	shl eax,13
-	xor eax,ebx
-
-	mov ebx,eax
-	shr eax,17
-	xor eax,ebx
-
-	mov ebx,eax
-	shl eax,5
-	xor eax,ebx
-
-	and eax,0x0000FFFF
-	mov [ds:edi],eax
-
-	add edi,4
-	cmp edi,START_MEMORY_TEST + MEMORY_TEST_SIZE
-	jne main_loop_random_mem
-
-	pop ebx
-	pop edi
-	ret
+	jmp .loop_halt_cpu
+;-------------------------------------------------------------------
+
+	%include 'PUTC_386.INC'
+	%include 'PUTS_386.INC'
+	%include 'PRINT_HEX_386.INC'
+	%include 'TIMER_386.INC'
 
 msg_second_stage_hello      db "I am the second stage ! :)",13,10,0
+msg_second_stage_386        db "386 CPU or up required ! - halted...",13,10,0
+msg_second_stage_halted     db "- Halted -",13,10,0
 msg_second_stage_flat       db "Protected mode enabled !",13,10,0
-cpu_type                    db 0
 msg_return                  db 13,10,0
-msg_cpuid                   db "CPU ID: 0x",0
+
+msg_cpu                     db "CPU : ",0
 msg_cpu8086                 db "8086 CPU",13,10,0
+msg_cpu80186                db "186 CPU",13,10,0
 msg_cpu80286                db "286 CPU",13,10,0
 msg_cpu80386                db "386 CPU",13,10,0
 msg_cpu80486                db "486 CPU",13,10,0
-msg_cpuvendor               db "Vendor ID: "
+msg_cpu80586                db "586 CPU",13,10,0
+
+align 4
+cpu_str_list                dd msg_cpu8086
+							dd msg_cpu80186
+							dd msg_cpu80286
+							dd msg_cpu80386
+							dd msg_cpu80486
+							dd msg_cpu80586
+							dd 0
+
+msg_cpuvendor               db "Vendor ID: ",0
+msg_cpuid                   db "CPU ID: 0x",0
 cpuid_manufacturer          db "            ",13,10,0
+
+cpu_type                    db 0
 cpuid_id                    dd 0
