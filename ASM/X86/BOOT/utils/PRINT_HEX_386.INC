@@ -84,3 +84,62 @@ print_hex_long:
 	call prt_hex_byte_386
 
 	ret
+
+; DS:ESI source
+; ECX = size
+global prt_hexbuf_386
+prt_hexbuf_386:
+
+	push eax
+	push ebx
+	push ecx
+	push esi
+
+	mov al, 0xD
+	call putc_386
+
+	mov al, 0xA
+	call putc_386
+
+loop_buf:
+
+	mov bl,16
+
+loop_buf_line:
+
+	mov al, ds:[esi]
+	call prt_hex_byte_386
+
+	inc esi
+
+	mov al, ' '
+	call putc_386
+
+	dec ecx
+	jz  loop_buf_end
+
+	dec bl
+	jnz loop_buf_line
+
+	mov al, 0xD
+	call putc_386
+
+	mov al, 0xA
+	call putc_386
+
+	jmp loop_buf
+
+loop_buf_end:
+
+	mov al, 0xD
+	call putc_386
+
+	mov al, 0xA
+	call putc_386
+
+	pop esi
+	pop ecx
+	pop ebx
+	pop eax
+
+	ret
