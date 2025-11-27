@@ -15,14 +15,14 @@
 
 	%define DISK_TOTAL_SECTORS (NUMBER_OF_TRACKS*SECTOR_PER_TRACK*HEADS_PER_TRACK)
 
-	%define KB_TO_READ       16
+	%define KB_TO_READ       32
 
 	%define TRACKS_TO_READ   ( ((KB_TO_READ*1024) / (SECTOR_PER_TRACK*HEADS_PER_TRACK*SECTOR_SIZE) + 1 ) )
 	%define RSVD_SECTORS     SECTOR_PER_TRACK*HEADS_PER_TRACK*TRACKS_TO_READ
 
-	%define BIOS_LOAD_OFFSET   0x7C00      ; BIOS Boot sector location 0x0000:0x7C00
-	%define RELOC_BASE_OFFSET   0x600      ; Boot sector relocation to 0x0000:0x0600
-	%define LOAD_BASE_OFFSET    0x800      ; Load start address set to 0x0000:0x0800
+	%define BIOS_LOAD_OFFSET    0x7C00      ; BIOS Boot sector location 0x0000:0x7C00
+	%define RELOC_BASE_OFFSET   0x0E00      ; Boot sector relocation to 0x0000:0x0E00
+	%define LOAD_BASE_OFFSET    0x1000      ; Load start address set to 0x0000:0x1000
 
 	[bits  16]
 
@@ -76,16 +76,21 @@ looperror:
 
 boot_sector_code:
 
-	; relocate the boot sector code to 0x0000:0x0600
+	; relocate the boot sector code to 0x0000:0x0E00
 	mov ax, cs                             ; es = ds = cs = 0x0000
 	mov ds, ax
 	mov es, ax
 
+	; Relocate stack
+	mov ss, ax
+	mov sp, RELOC_BASE_OFFSET
+
 	; Save DL Register - It contains the boot drive id
 	mov ds:[drive_id], dl
 
-	mov di, RELOC_BASE_OFFSET              ; Destination
+	; Copy the present boot sector code
 	mov si, BIOS_LOAD_OFFSET               ; Source
+	mov di, RELOC_BASE_OFFSET              ; Destination
 	mov cx, SECTOR_SIZE                    ; Size
 	repnz movsb                            ; Copy...
 
@@ -97,7 +102,18 @@ boot_sector_code:
 ;------------------------------------------------------------------------------
 
 relocated_code_entry:
-	; We are now located in the 0x0000:0x0600 memory block !
+	; We are now located in the 0x0000:0x0E00 memory block !
+
+	mov ax, cs                             ; es = ds = cs = 0x0000
+	mov ds, ax
+	mov es, ax
+
+	; Clear boot sector
+	mov al, 0
+	mov di, BIOS_LOAD_OFFSET               ; Source
+	mov cx, 512
+	cld
+	repnz stosb
 
 	; Print the startup message
 	mov  si, RELOC_BASE_OFFSET + (msg_start - BIOS_LOAD_OFFSET)
@@ -107,7 +123,7 @@ retry:
 	; Reset floppy drive
 	xor ah,ah
 	xor dh,dh
-	mov dl,ds:[drive_id]
+	mov dl,ds:[RELOC_BASE_OFFSET + (drive_id - BIOS_LOAD_OFFSET)]
 	int 13h
 	jc  retry_loop
 
@@ -116,7 +132,7 @@ retry:
 	mov bx,LOAD_BASE_OFFSET
 
 	xor dh,dh                              ; Head 0 (dh)
-	mov dl,ds:[drive_id]                   ; Drive id (dl)
+	mov dl,ds:[RELOC_BASE_OFFSET + (drive_id - BIOS_LOAD_OFFSET)]                   ; Drive id (dl)
 	xor ch,ch                              ; Start at track 0
 	mov cl,2                               ; Sector 2
 	mov al,[cs:RELOC_BASE_OFFSET+0x18]     ; SECTOR_PER_TRACK sectors to read for the first track
