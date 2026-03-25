@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include "special_chars.h"
 
 void basepath(char const *path, char * out)
 {
@@ -26,11 +27,11 @@ void basepath(char const *path, char * out)
 
 char *basename(char const *path)
 {
-    char *s = strrchr(path, '/');
-    if (!s)
-        return strdup(path);
-    else
-        return strdup(s + 1);
+	char *s = strrchr(path, '/');
+	if (!s)
+		return strdup(path);
+	else
+		return strdup(s + 1);
 }
 
 int get_image_size(char * image_path, int * x, int * y)
@@ -432,20 +433,164 @@ int patch_html_page(char * path)
 	return -1;
 }
 
+int patch_html_char_page(char * path)
+{
+	FILE *f;
+	char * html_buf;
+	int  i,cnt;
+	char bpath[512];
+	char ppath[512];
+	const html_specchars * specchar;
+
+	int inside_balise, checkspecial;
+
+	cnt = 0;
+	html_buf = load_html(path);
+	if(html_buf)
+	{
+		basepath(path, bpath);
+
+		strcpy(ppath,path);
+		strcat(ppath,"_patched");
+
+		inside_balise = 0;
+		f = fopen(ppath,"wb");
+		if(f)
+		{
+			i = 0;
+			while(  html_buf[i] )
+			{
+				checkspecial = 1;
+				if( ( html_buf[i] == '<' ) && !inside_balise )
+				{
+					inside_balise = 1;
+					checkspecial = 0;
+				}
+
+				if( ( html_buf[i] == '>' ) && inside_balise )
+				{
+					inside_balise = 0;
+					checkspecial = 0;
+				}
+
+				if( checkspecial && !inside_balise )
+				{
+					specchar = is_special_char( html_buf[i] );
+					if(specchar)
+					{
+						if(specchar->html_code)
+						{
+							fprintf(f ,"%s", specchar->html_code);
+							cnt++;
+						}
+						else
+						{
+							if(specchar->decimal_code)
+							{
+								fprintf(f ,"%s", specchar->decimal_code);
+								cnt++;
+							}
+						}
+					}
+					else
+					{
+						fprintf(f ,"%c", html_buf[i]);
+					}
+				}
+				else
+				{
+					fprintf(f ,"%c", html_buf[i]);
+				}
+				i++;
+			}
+
+			fclose(f);
+		}
+
+		free(html_buf);
+
+		return cnt;
+	}
+
+	return -1;
+}
+
+int patch_html_check_page(char * path)
+{
+	unsigned char * html_buf;
+	int  i;
+	char tmp_str[64];
+
+	html_buf = (unsigned char*)load_html(path);
+	if(html_buf)
+	{
+		i = 0;
+		while( html_buf[i] )
+		{
+			if( html_buf[i] >= 0x80 )
+			{
+				printf("Bad / special char 0x%.2X at offset %d (0x%X)", html_buf[i], i, i );
+				if( i >= 10 )
+				{
+					strncpy(&tmp_str,html_buf + (i - 10),63);
+
+				}
+				else
+				{
+					strncpy(&tmp_str,html_buf,63);
+				}
+				tmp_str[63] = 0;
+				printf(" \"%s\"\n",tmp_str);
+
+			}
+			i++;
+		}
+
+		free(html_buf);
+
+		return 1;
+	}
+
+	return -1;
+}
+
 int main (int argc, char ** argv)
 {
-	int i;
+	int i,ret;
+
+	//is_special_char2(1);
 
 	if(argc>1)
 	{
-		for(i=1;i<argc;i++)
+		if( !strcmp(argv[1],"-img") )
 		{
-			patch_html_page(argv[i]);
+			for(i=2;i<argc;i++)
+			{
+				patch_html_page(argv[i]);
+			}
 		}
+
+		if( !strcmp(argv[1],"-char") )
+		{
+			for(i=2;i<argc;i++)
+			{
+				ret = patch_html_char_page(argv[i]);
+				printf("%d character(s) replaced\n",ret);
+			}
+		}
+
+		if( !strcmp(argv[1],"-check") )
+		{
+			for(i=2;i<argc;i++)
+			{
+				patch_html_check_page(argv[i]);
+			}
+		}
+
 	}
 	else
 	{
-		printf("Syntax : %s in_html_files\n",argv[0]);
+		printf("Syntax : %s -img/-char in_html_files\n",argv[0]);
 	}
 
 	exit(1);
