@@ -19,6 +19,8 @@ typedef struct _zx0_ctx
 	unsigned char last_byte_2;
 }zx0_ctx;
 
+int zx0_unpack(unsigned char * output,unsigned char * packed);
+
 static unsigned char get_next_byte(zx0_ctx * ctx)
 {
 	ctx->last_byte = *ctx->in_ptr++;
@@ -89,6 +91,7 @@ static void copy_from_last_offset(zx0_ctx * ctx,int last_offset)
 	int len;
 
 	len = read_interlaced_elias_gamma(ctx,0);
+
 	write_bytes(ctx, last_offset, len);
 }
 
@@ -214,7 +217,11 @@ int main(int argc, char** argv)
 	memset(&ctx,0,sizeof(zx0_ctx));
 
 //	for(int i=0;i<100000;i++)
-	out_size = decompress(&ctx, in_buf, out_buf);
+		out_size = decompress(&ctx, in_buf, out_buf);
+
+
+//	for(int i=0;i<100000;i++)
+//		out_size = zx0_unpack(out_buf, in_buf);
 
 	if( fwrite( out_buf, out_size, 1, f_out ) != 1 )
 		goto error;
