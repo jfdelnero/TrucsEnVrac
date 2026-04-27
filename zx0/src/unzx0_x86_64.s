@@ -39,6 +39,7 @@ get_bit_next_byte:
 
 _read_interlaced_elias_gamma_backtrace:
 	# rax = value = 1
+	xor r9b,r9b
 	xor rax,rax
 	inc rax
 
@@ -47,8 +48,16 @@ _read_interlaced_elias_gamma_backtrace:
 
 	ret
 
+_read_interlaced_elias_gamma_inv:
+
+	mov  r9b,1
+	jmp elias_gamma_inv
+
 _read_interlaced_elias_gamma:
 
+	xor  r9b, r9b
+
+elias_gamma_inv:
 	# rax = value = 1
 	xor rax,rax
 	inc rax
@@ -63,7 +72,6 @@ _read_interlaced_elias_gamma_cont:
 	add rax, rax #shl rax, 1
 
 	call _get_next_bit
-
 	jz   loop_elias_gamma_0
 
 	or    al,  1
@@ -104,7 +112,6 @@ copy_literals_loop:
 
 #_copy_literals:
 
-	xor  r9b,r9b
 	call _read_interlaced_elias_gamma
 
 	push rcx
@@ -113,14 +120,14 @@ copy_literals_loop:
 	rep movsb
 	pop rcx
 
-#
 
+// if bit==1 -> COPY_FROM_NEW_OFFSET  
 	call _get_next_bit
-	jnz  skip_001
+	jnz  copy_from_new_offset_loop
+
+// else      -> COPY_FROM_LAST_OFFSET
 
 #_copy_from_last_offset
-
-	xor  r9b,r9b
 	call _read_interlaced_elias_gamma
 
 	mov  r11, rsi
@@ -139,8 +146,6 @@ copy_literals_loop:
 #
 
 	call _get_next_bit
-
-skip_001:
 	jz  copy_literals_loop
 
 copy_from_new_offset_loop:
@@ -148,8 +153,7 @@ copy_from_new_offset_loop:
 # ----------------------------------------------
 # _copy_from_new_offset:
 
-	mov  r9b,1
-	call _read_interlaced_elias_gamma
+	call _read_interlaced_elias_gamma_inv
 
 	cmp rax, 256
 	je  _zx0_unpack_exit
@@ -166,7 +170,6 @@ copy_from_new_offset_loop:
 	sub rax, r9
 	mov r11,rax
 
-	xor  r9b, r9b
 	call _read_interlaced_elias_gamma_backtrace
 	inc rax
 
