@@ -19,7 +19,7 @@ int open_file(file_cache * fc, char* path, fsize_t filesize,unsigned char fill)
 
 	if( filesize < 0 )
 	{   // Read mode
-		fc->f = fopen(path,"rb");
+		fc->f = fopen(path,"r+b");
 		if(fc->f)
 		{
 			if(fseek(fc->f,0,SEEK_END))
@@ -137,6 +137,17 @@ unsigned char get_byte(file_cache * fc, foffset_t offset, int * success)
 			}
 			else
 			{
+				if( fc->dirty )
+				{
+					if(fseek(fc->f, fc->current_offset, SEEK_SET))
+						goto error;
+
+					if( fwrite( &fc->cache_buffer, fc->cur_page_size, 1, fc->f ) != 1 )
+						goto error;
+error:
+					fc->dirty = 0;
+				}
+
 				fc->current_offset = (offset & ~(FILE_CACHE_SIZE-1));
 				fseek(fc->f, fc->current_offset,SEEK_SET);
 

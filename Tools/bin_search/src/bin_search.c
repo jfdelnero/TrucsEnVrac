@@ -51,7 +51,9 @@ int is_printable_char(unsigned char c)
 
 	if( (c >= 'A' && c <= 'Z') ||
 		(c >= 'a' && c <= 'z') ||
-		(c >= '0' && c <= '9') )
+		(c >= '0' && c <= '9') || 
+		( c == ':' || c == '/')
+		)
 	{
 		return 1;
 	}
@@ -156,7 +158,7 @@ int strbin2bin(char * str, unsigned char * binseq, int max_size)
 	return j;
 }
 
-int binseqsearch(char * file, char * seqfile, unsigned char * binseq, int binseqsize)
+int binseqsearch(char * file, char * seqfile, unsigned char * binseq, int binseqsize, unsigned char * binseqpatch, int binseqpatchsize)
 {
 	file_cache bin_file;
 	file_cache seq_file;
@@ -233,6 +235,11 @@ int binseqsearch(char * file, char * seqfile, unsigned char * binseq, int binseq
 				printbuf(prtbuf,sizeof(prtbuf), lastvalid - ((lastvalid & ~0xF) - 0x20), lastvalid - ((lastvalid & ~0xF) - 0x20) + binseqsize );
 				printf("\n");
 
+				for(i=0;i<binseqpatchsize;i++)
+				{
+					set_byte(&bin_file, lastvalid + i, binseqpatch[i]);
+				}
+
 				bin_i = lastvalid + 1;
 				cnt++;
 			}
@@ -265,6 +272,10 @@ int main (int argc, char ** argv)
 
 	unsigned char bin_seq[4096];
 	int  bin_seq_size;
+
+	unsigned char bin_seq_patch[4096];
+	int  bin_seq_patch_size;
+
 	int i;
 	int quiet;
 
@@ -283,6 +294,9 @@ int main (int argc, char ** argv)
 		printf("%s -binseq:0123456789ABCDEF [files]\n",argv[0]);
 		printf("%s -strseq:\"ascii string\" [files]\n",argv[0]);
 		printf("%s -fileseq:file_path [files]\n",argv[0]);
+		printf("%s -fileseq:file_path [files]\n",argv[0]);
+		printf("%s -binseq:0123456789ABCDEF -binpatch:2288 [files]\n",argv[0]);
+		printf("%s -strseq:\"ascii string\" -strseqpatch:\"new string\" [files]\n",argv[0]);
 		printf("%s -quiet\n",argv[0]);
 
 		exit(0);
@@ -291,6 +305,9 @@ int main (int argc, char ** argv)
 	seq_file_path_ptr = NULL;
 	bin_seq_size = 0;
 	bin_seq_str[0] = '\0';
+
+	bin_seq_patch_size = 0;
+	bin_seq_patch[0] = '\0';
 
 	if(isOption(argc, argv,"binseq",(char*)&bin_seq_str, NULL) )
 	{
@@ -340,12 +357,57 @@ int main (int argc, char ** argv)
 		seq_file_path_ptr = seq_file_path;
 	}
 
+	if(isOption(argc, argv,"binpatch",(char*)&bin_seq_str, NULL) )
+	{
+		bin_seq_patch_size = strbin2bin(bin_seq_str, bin_seq_patch, sizeof(bin_seq_patch));
+
+		if(!quiet)
+		{
+			printf("Binary seq patch (%d bytes) : ", bin_seq_patch_size);
+			for(i=0;i<bin_seq_patch_size;i++)
+			{
+				printf("%.2X ",bin_seq_patch[i]);
+			}
+			printf("\n");
+		}
+	}
+
+	if(isOption(argc, argv,"strseqpatch",(char*)&bin_seq_str, NULL) )
+	{
+		i = 0;
+		bin_seq_patch_size = 0;
+		while(bin_seq_str[i])
+		{
+			bin_seq_patch[i] = bin_seq_str[i];
+			i++;
+			bin_seq_patch_size++;
+		}
+
+		if(isOption(argc, argv,"z",NULL, NULL) )
+		{
+			bin_seq_patch[i] = 0;
+			bin_seq_patch_size++;
+		}
+
+		if(!quiet)
+		{
+			printf("str seq patch (%d bytes) : ", bin_seq_patch_size);
+
+			for(i=0;i<bin_seq_patch_size;i++)
+			{
+				printf("%.2X ",bin_seq_patch[i]);
+			}
+
+			printf("\n");
+		}
+	}
+
 	i = 1;
 	while( i < argc )
 	{
 		if(argv[i][0] != '-')
 		{
-			binseqsearch( argv[i], seq_file_path_ptr, (unsigned char*)bin_seq, bin_seq_size );
+			binseqsearch( argv[i], seq_file_path_ptr, (unsigned char*)bin_seq, bin_seq_size,(unsigned char*)bin_seq_patch, bin_seq_patch_size );
 		}
 		i++;
 	}
