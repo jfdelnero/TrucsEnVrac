@@ -225,7 +225,7 @@ int binseqsearch(char * file, char * seqfile, unsigned char * binseq, int binseq
 				// Found !
 				seq_i = 0;
 
-				printf("%s: Offset 0x%lX\n", file, lastvalid);
+				printf("%s: Offset 0x%X\n", file, (unsigned int)lastvalid);
 
 				for(i=0;i<sizeof(prtbuf);i++)
 				{
