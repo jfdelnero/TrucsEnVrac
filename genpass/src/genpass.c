@@ -391,7 +391,7 @@ void stats_pass(char * pass)
 		}
 	}
 
-	memset(&hist,0,sizeof(hist));
+	memset_s(&hist, sizeof(hist), 0, sizeof(hist));
 
 	H = string_entropy(pass);
 
