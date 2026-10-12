@@ -119,6 +119,18 @@ void printhelp(char* argv[])
 	fprintf(stdout, "\n");
 }
 
+static inline void * sec_memset(void *v, int c, size_t n)
+{
+	volatile unsigned char *p = (volatile unsigned char *)v;
+
+	while (n--)
+	{
+		*p++ = c;
+	}
+
+	return v;
+}
+
 void addsha( unsigned char * sha3_2, unsigned char * sha3_1 )
 {
 	unsigned short acc,i;
@@ -145,8 +157,8 @@ int sha3_file(char * file, unsigned char * sha3_512)
 
 	ret = -1;
 
-	memset(&sha,0,sizeof(sha));
-	memset(&finalsha,0,sizeof(finalsha));
+	sec_memset(&sha,0,sizeof(sha));
+	sec_memset(&finalsha,0,sizeof(finalsha));
 
 	f = fopen(file,"rb");
 	if(f)
@@ -162,11 +174,11 @@ int sha3_file(char * file, unsigned char * sha3_512)
 				{
 					sha3(buf, n, sha, sizeof(sha));
 					addsha( (uint8_t *)&finalsha, (uint8_t *)&sha );
-					memset(&sha,0,sizeof(SHA3_SIZE));
+					sec_memset(&sha,0,sizeof(SHA3_SIZE));
 				}
 			}while( n == PAGESIZE );
 
-			memset(buf,0,PAGESIZE);
+			sec_memset(buf,0,PAGESIZE);
 			ret = 0;
 
 			free(buf);
@@ -178,8 +190,8 @@ int sha3_file(char * file, unsigned char * sha3_512)
 	if(ret >= 0)
 		memcpy(sha3_512, &finalsha,sizeof(finalsha));
 
-	memset(&sha,0,sizeof(sha));
-	memset(&finalsha,0,sizeof(finalsha));
+	sec_memset(&sha,0,sizeof(sha));
+	sec_memset(&finalsha,0,sizeof(finalsha));
 
 	return ret;
 }
@@ -206,7 +218,7 @@ void sha2pass(unsigned char * dict, int dict_size, char * pass, int pass_size, u
 	int i;
 	uint8_t hash[SHA3_SIZE];
 
-	memset(&hash,0,SHA3_SIZE);
+	sec_memset(&hash,0,SHA3_SIZE);
 
 	for(i=0;i<SHA3_SIZE;i++)
 	{
@@ -229,8 +241,8 @@ double string_entropy(char * str)
 	double H;
 	int len;
 
-	memset(&where,0xFF,sizeof(where));
-	memset(&hist,0,sizeof(hist));
+	sec_memset(&where,0xFF,sizeof(where));
+	sec_memset(&hist,0,sizeof(hist));
 
 	histsize = 0;
 
@@ -356,7 +368,7 @@ double gen_pass(uint8_t * sha_seed, char * pass, int pass_size_min, int pass_siz
 	sha2pass((unsigned char*)&dict, dict_size, pass, pass_size,  (uint8_t *)&sha_final);
 
 	memcpy(sha_seed, &sha_final, SHA3_SIZE);
-	
+
 	return string_entropy(pass);
 
 error:
@@ -370,7 +382,7 @@ void stats_pass(char * pass)
 	unsigned char hist[256];
 	double H;
 
-	memset(&hist,0,sizeof(hist));
+	sec_memset(&hist,0,sizeof(hist));
 	len = 0;
 	while(pass[len])
 	{
@@ -391,7 +403,7 @@ void stats_pass(char * pass)
 		}
 	}
 
-	memset_s(&hist, sizeof(hist), 0, sizeof(hist));
+	sec_memset(&hist, 0, sizeof(hist));
 
 	H = string_entropy(pass);
 
@@ -444,8 +456,8 @@ int main(int argc, char* argv[])
 
 		pass_size_max = pass_size_min;
 	}
-	
-	memset(&sha_final,0x00,SHA3_SIZE);
+
+	sec_memset(&sha_final,0x00,SHA3_SIZE);
 
 	i = 1;
 	while( argv[i] )
@@ -454,7 +466,7 @@ int main(int argc, char* argv[])
 		{
 			sha3_file((char*)argv[i], (uint8_t *)&sha);
 			addsha( (uint8_t *)&sha_final, (uint8_t *)&sha );
-			memset(&sha,0,SHA3_SIZE);
+			sec_memset(&sha,0,SHA3_SIZE);
 		}
 		i++;
 	}
@@ -483,10 +495,10 @@ int main(int argc, char* argv[])
 
 	stats_pass((char*)&final_pass);
 
-	memset(&pass,0,sizeof(pass));
-	memset(&final_pass,0,sizeof(final_pass));
-	memset(&sha,0,SHA3_SIZE);
-	memset(&sha_final,0,SHA3_SIZE);
+	sec_memset(&pass,0,sizeof(pass));
+	sec_memset(&final_pass,0,sizeof(final_pass));
+	sec_memset(&sha,0,SHA3_SIZE);
+	sec_memset(&sha_final,0,SHA3_SIZE);
 
 	return ret;
 
